@@ -2,44 +2,64 @@
 #ifndef hzura_objects_h
 #define hzura_objects_h
 
-#include "Events.hh"
+#include "hzura_cfg.hh"
 
 namespace hzura {
 
-  class Photon(){
-    Set(Events * event, const int & index){
-      tlz.SetPtEtaPhiM(event->Photon_pt[index], event->Photon_eta[index], event->Photon_phi[index], 0 );
+  class Photon {
+    public:
+    void Init(const int & i){
+      tlv.SetPtEtaPhiM(hzura::glob::event->Photons_pt[index], hzura::glob::event->Photons_eta[index], hzura::glob::event->Photons_phi[index], 0 );
     }
 
-    TLorentzVector tlz;
+    Float_t iso;
+    int index;
+    TLorentzVector tlv;
   };
 
-  class Electron(){
-    Set(Events * event, const int & index){
-      tlz.SetPtEtaPhiM(events->Electron_pt[index], events->Electron_eta[index], events->Electron_phi[index], 0.005 );
+  class Electron {
+    public:
+    void Init(const int & i){
+      index = i;
+      tlv.SetPtEtaPhiM(hzura::glob::event->Electrons_pt[index], hzura::glob::event->Electrons_eta[index], hzura::glob::event->Electrons_phi[index], 0.005 );
     }
 
-    TLorentzVector tlz;
+    int index;
+    TLorentzVector tlv;
   };
 
-  class Muon(){
-    Set(Events * event, const int & index){
-      tlz.SetPtEtaPhiM(events->Muon_pt[index], events->Muon_eta[index], events->Muon_phi[index], 0.105 );
+  class Muon {
+    public:
+    void Init(const int & i){
+      index = i;
+      tlv.SetPtEtaPhiM(hzura::glob::event->Muons_pt[index], hzura::glob::event->Muons_eta[index], hzura::glob::event->Muons_phi[index], 0.105 );
     }
 
-    TLorentzVector tlz;
+    int index;
+    TLorentzVector tlv;
   };
 
-  class Jet(){
-    Set(Events * event, const int & index){
-      tlz.SetPtEtaPhiM(events->Jet_pt[index], events->Jet_eta[index], events->Jet_phi[index], events->Jet_m[index] );
+  class Jet {
+    public:
+    void Init(const int & i){
+      index = i;
+      tlv.SetPtEtaPhiM(hzura::glob::event->Jets_pt[index], hzura::glob::event->Jets_eta[index], hzura::glob::event->Jets_phi[index], hzura::glob::event->Jets_m[index] );
+      btag_DeepCSV_val     = -1;
+      btag_DeepFlavour_val = -1;
     }
 
-    TLorentzVector tlz;
+    int index;
+    bool btag_DeepCSV_isLoose, btag_DeepCSV_isMedium, btag_DeepCSV_isTight;
+    bool btag_DeepFlavour_isLoose, btag_DeepFlavour_isMedium, btag_DeepFlavour_isTight;
+
+    TLorentzVector tlv;
+    Float_t btag_DeepCSV_val, btag_DeepFlavour_val;
   };
 
-  class Met(){
+  class Met {
+    public:
   };
 };
 
 #endif
+
