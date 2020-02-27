@@ -4,11 +4,15 @@
 
 // hzura
 #include <hzura_objects.hh>
+#include <hzura_analyses_helpers.hh>
 #include <hzura_selection_helpers.hh>
 
 // GRIDNER interface
 #include <Events.C>
 #include <EventsMeta.C>
+
+using namespace hzura;
+using namespace pmlib;
 
 class Reader{
   public:
@@ -79,6 +83,20 @@ int main(int argc, char *argv[]) { // FIXME
   TH1D * h_jets_pairs_m  = new TH1D("h_jets_pairs_m",  "h_jets_pairs_m",  100, 0, 300);
   TH1D * h_bjets_pairs_m = new TH1D("h_bjets_pairs_m", "h_bjets_pairs_m", 100, 0, 300);
 
+  TH1D * h_photon_pairs_m  = new TH1D("h_photon_pairs_m",  "h_photon_pairs_m",  100, 0, 300);
+
+  TH1D * h_electon_pairs_m     = new TH1D("h_electon_pairs_m",     "h_electon_pairs_m",     100, 0, 300);
+  TH1D * h_electon_SC_pairs_m  = new TH1D("h_electon_SC_pairs_m",  "h_electon_SC_pairs_m",  100, 0, 300);
+  TH1D * h_electon_DC_pairs_m  = new TH1D("h_electon_DC_pairs_m",  "h_electon_DC_pairs_m",  100, 0, 300);
+
+  TH1D * h_muon_pairs_m     = new TH1D("h_muon_pairs_m",     "h_muon_pairs_m",     100, 0, 300);
+  TH1D * h_muon_SC_pairs_m  = new TH1D("h_muon_SC_pairs_m",  "h_muon_SC_pairs_m",  100, 0, 300);
+  TH1D * h_muon_DC_pairs_m  = new TH1D("h_muon_DC_pairs_m",  "h_muon_DC_pairs_m",  100, 0, 300);
+
+  TH1D * h_mue_pairs_m     = new TH1D("h_mue_pairs_m",     "h_mue_pairs_m",     100, 0, 300);
+  TH1D * h_mue_SC_pairs_m  = new TH1D("h_mue_SC_pairs_m",  "h_mue_SC_pairs_m",  100, 0, 300);
+  TH1D * h_mue_DC_pairs_m  = new TH1D("h_mue_DC_pairs_m",  "h_mue_DC_pairs_m",  100, 0, 300);
+
   // -1. run options
   // https://arxiv.org/pdf/1804.02716.pdf
   Float_t Photons_pt_cut  = 20;
@@ -121,7 +139,7 @@ int main(int argc, char *argv[]) { // FIXME
   hzura::Jet      jet_candidate;
 
   MSG_INFO("hzura::main(): start loop, total number of events", entrys);
-  // entrys = TMath::Min( (Long64_t)100000, entrys);
+  entrys = TMath::Min( (Long64_t)100, entrys);
 
   for(;entry < entrys; entry++){
     hzura::glob::event->GetEntry(entry);
@@ -137,15 +155,20 @@ int main(int argc, char *argv[]) { // FIXME
     bjet_candidates.clear();
 
     // 1. make some control plots
+    msg("Event ... ");
+    for(int i = 0; i < event->trigger_fires.size(); i++){
+      msg( event->trigger_fires[i] );
+    
+    }
 
     // OBJECT SELECTIONS ==============================================
     // 2. apply basic cuts on events
 
     // photons =-
     for(int i = 0; i < event->Photons_; i++){
-      if( event->Photons_pt[i] < Photons_pt_cut ) continue;
-      if( TMath::Abs( event->Photons_eta[i] ) > Photons_eta_cut ) continue;
-      if( TMath::Abs( event->Photons_eta[i] ) > Photons_eta_hole_cut_start and TMath::Abs( event->Photons_eta[i] ) < Photons_eta_hole_cut_end ) continue;
+      //if( event->Photons_pt[i] < Photons_pt_cut ) continue;
+      //if( TMath::Abs( event->Photons_eta[i] ) > Photons_eta_cut ) continue;
+      //if( TMath::Abs( event->Photons_eta[i] ) > Photons_eta_hole_cut_start and TMath::Abs( event->Photons_eta[i] ) < Photons_eta_hole_cut_end ) continue;
       if( not event->Photons_isLoose[i] ) continue;
 
       photon_candidate.Init( i );
@@ -215,6 +238,62 @@ int main(int argc, char *argv[]) { // FIXME
       }
     }
 
+    // photons pairs
+    vector<Particle> photon_pairs;
+    make_combinations(photon_candidates, photon_pairs);
+    msg( "photons", event->Photons_, photon_candidates.size(), photon_pairs.size() );
+    for( auto p : photon_pairs ){
+      msg( p.tlv.M() );
+      h_photon_pairs_m->Fill( p.tlv.M() );
+    }
+
+    // electron pairs
+    vector<Particle> electron_pairs;
+    make_combinations( electron_candidates, electron_pairs );
+    //msg( "electrons ", event->Electrons_, electron_candidates.size(), electron_pairs.size() );
+
+    vector<Particle> electron_pairs_SC;
+    make_sameCharge_combinations( electron_candidates, electron_pairs_SC );
+
+    vector<Particle> electron_pairs_DC;
+    make_diffCharge_combinations( electron_candidates,  electron_pairs_DC );
+
+    for(auto p : electron_pairs)    h_electon_pairs_m->Fill( p.tlv.M() );
+    for(auto p : electron_pairs_SC) h_electon_SC_pairs_m->Fill( p.tlv.M() );
+    for(auto p : electron_pairs_DC) h_electon_DC_pairs_m->Fill( p.tlv.M() );
+
+    // muon pairs
+    vector<Particle> muon_pairs;
+    make_combinations( muon_candidates, muon_pairs );
+    //msg( "muons ", event->Muons_, muon_candidates.size(), muon_pairs.size() );
+
+    vector<Particle> muon_pairs_SC;
+    make_sameCharge_combinations( muon_candidates, muon_pairs_SC );
+
+    vector<Particle> muon_pairs_DC;
+    make_diffCharge_combinations( muon_candidates, muon_pairs_DC );
+
+    for(auto p : muon_pairs) h_muon_pairs_m->Fill( p.tlv.M() );
+    for(auto p : muon_pairs_SC) h_muon_SC_pairs_m->Fill( p.tlv.M() );
+    for(auto p : muon_pairs_DC) h_muon_DC_pairs_m->Fill( p.tlv.M() );
+
+    // emu pairs
+    vector<Particle> emu_pairs;
+    make_combinations( electron_candidates, muon_candidates, emu_pairs );
+    //msg( "emy pairs ", emu_pairs.size() );
+
+    vector<Particle> emu_pairs_SC;
+    make_sameCharge_combinations( electron_candidates, muon_candidates, emu_pairs_SC );
+
+    vector<Particle> emu_pairs_DC;
+    make_diffCharge_combinations( electron_candidates, muon_candidates, emu_pairs_DC );
+
+    for(auto p : emu_pairs) h_mue_pairs_m->Fill( p.tlv.M() );
+    for(auto p : emu_pairs_SC) h_mue_SC_pairs_m->Fill( p.tlv.M() );
+    for(auto p : emu_pairs_DC) h_mue_DC_pairs_m->Fill( p.tlv.M() );
+  
+
+    // jets
     for( auto j : bjet_candidates ){
       h_bjets_pt->Fill( j.tlv.Pt() );
     }
@@ -223,6 +302,7 @@ int main(int argc, char *argv[]) { // FIXME
       h_ljets_pt->Fill( j.tlv.Pt() );
     }
 
+    // jets pairs
     for( int i = 0; i < bjet_candidates.size(); i++ ){
       auto tlv_1 = bjet_candidates[i].tlv;
       for( int j = i; j < bjet_candidates.size(); j++ ){
