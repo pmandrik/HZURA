@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) { // FIXME
   hzura::Jet      jet_candidate;
 
   MSG_INFO("hzura::main(): start loop, total number of events", entrys);
-  entrys = TMath::Min( (Long64_t)100, entrys);
+  // entrys = TMath::Min( (Long64_t)100, entrys);
 
   for(;entry < entrys; entry++){
     hzura::glob::event->GetEntry(entry);
@@ -155,22 +155,22 @@ int main(int argc, char *argv[]) { // FIXME
     bjet_candidates.clear();
 
     // 1. make some control plots
-    msg("Event ... ");
-    for(int i = 0; i < event->trigger_fires.size(); i++){
-      msg( event->trigger_fires[i] );
-    
-    }
+    // msg("Event ... ");
+    // for(int i = 0; i < event->trigger_fires.size(); i++) msg( "trigger", i, event->trigger_fires[i] );
 
     // OBJECT SELECTIONS ==============================================
     // 2. apply basic cuts on events
 
     // photons =-
     for(int i = 0; i < event->Photons_; i++){
-      //if( event->Photons_pt[i] < Photons_pt_cut ) continue;
-      //if( TMath::Abs( event->Photons_eta[i] ) > Photons_eta_cut ) continue;
-      //if( TMath::Abs( event->Photons_eta[i] ) > Photons_eta_hole_cut_start and TMath::Abs( event->Photons_eta[i] ) < Photons_eta_hole_cut_end ) continue;
+      // msg( "pho pt eta phi", i, event->Photons_pt[i], event->Photons_eta[i], event->Photons_phi[i] );
+      if( event->Photons_pt[i] < Photons_pt_cut ) continue;
+      if( TMath::Abs( event->Photons_eta[i] ) > Photons_eta_cut ) continue;
+      if( TMath::Abs( event->Photons_eta[i] ) > Photons_eta_hole_cut_start and TMath::Abs( event->Photons_eta[i] ) < Photons_eta_hole_cut_end ) continue;
       if( not event->Photons_isLoose[i] ) continue;
+      // if( not event->Photons_isTight[i] ) continue;
 
+      // msg( "passed! " );
       photon_candidate.Init( i );
       photon_candidates.emplace_back( photon_candidate );
     }
@@ -221,29 +221,39 @@ int main(int argc, char *argv[]) { // FIXME
       const bool & is_medium = hzura::glob::event->Photons_isMedium[ p.index ]; 
       const bool & is_tight  = hzura::glob::event->Photons_isTight[ p.index ]; 
 
+      const Float_t & pt = 1.;
+
       if( is_loose ){ 
-        h_phoLooseIsoCharged->Fill( sumChargedHadronPt );
-        h_phoLooseIsoNeutral->Fill( sumNeutralHadronEt );
-        h_phoLooseIsoPhoton ->Fill( sumPhotonEt );
+        h_phoLooseIsoCharged->Fill( sumChargedHadronPt / pt );
+        h_phoLooseIsoNeutral->Fill( sumNeutralHadronEt / pt );
+        h_phoLooseIsoPhoton ->Fill( sumPhotonEt / pt );
       }
       if( is_medium ){ 
-        h_phoMediumIsoCharged->Fill( sumChargedHadronPt );
-        h_phoMediumIsoNeutral->Fill( sumNeutralHadronEt );
-        h_phoMediumIsoPhoton ->Fill( sumPhotonEt );
+        h_phoMediumIsoCharged->Fill( sumChargedHadronPt / pt );
+        h_phoMediumIsoNeutral->Fill( sumNeutralHadronEt / pt );
+        h_phoMediumIsoPhoton ->Fill( sumPhotonEt / pt );
       }
       if( is_tight ){ 
-        h_phoTightIsoCharged->Fill( sumChargedHadronPt );
-        h_phoTightIsoNeutral->Fill( sumNeutralHadronEt );
-        h_phoTightIsoPhoton ->Fill( sumPhotonEt );
+        h_phoTightIsoCharged->Fill( sumChargedHadronPt / pt );
+        h_phoTightIsoNeutral->Fill( sumNeutralHadronEt / pt );
+        h_phoTightIsoPhoton ->Fill( sumPhotonEt / pt );
       }
     }
 
     // photons pairs
     vector<Particle> photon_pairs;
     make_combinations(photon_candidates, photon_pairs);
-    msg( "photons", event->Photons_, photon_candidates.size(), photon_pairs.size() );
+    // if( photon_pairs.size() ) msg( "photons", event->Photons_, photon_candidates.size(), photon_pairs.size() );
+    for( int i = 0; i < photon_candidates.size(); i++ ){
+      auto tlv_1 = photon_candidates[i].tlv;
+      for( int j = i+1; j < photon_candidates.size(); j++ ){
+        auto tlv_2 = photon_candidates[j].tlv;
+        msg( (tlv_1 + tlv_2).M() );
+      }
+    }
+
     for( auto p : photon_pairs ){
-      msg( p.tlv.M() );
+      // msg( p.tlv.M() );
       h_photon_pairs_m->Fill( p.tlv.M() );
     }
 
@@ -251,6 +261,7 @@ int main(int argc, char *argv[]) { // FIXME
     vector<Particle> electron_pairs;
     make_combinations( electron_candidates, electron_pairs );
     //msg( "electrons ", event->Electrons_, electron_candidates.size(), electron_pairs.size() );
+    if( not electron_pairs.size() ) continue;
 
     vector<Particle> electron_pairs_SC;
     make_sameCharge_combinations( electron_candidates, electron_pairs_SC );
@@ -305,7 +316,7 @@ int main(int argc, char *argv[]) { // FIXME
     // jets pairs
     for( int i = 0; i < bjet_candidates.size(); i++ ){
       auto tlv_1 = bjet_candidates[i].tlv;
-      for( int j = i; j < bjet_candidates.size(); j++ ){
+      for( int j = i+1; j < bjet_candidates.size(); j++ ){
         auto tlv_2 = bjet_candidates[j].tlv;
         h_bjets_pairs_m->Fill( (tlv_1 + tlv_2).M() );
       }
@@ -313,7 +324,7 @@ int main(int argc, char *argv[]) { // FIXME
 
     for( int i = 0; i < jet_candidates.size(); i++ ){
       auto tlv_1 = jet_candidates[i].tlv;
-      for( int j = i; j < jet_candidates.size(); j++ ){
+      for( int j = i+1; j < jet_candidates.size(); j++ ){
         auto tlv_2 = jet_candidates[j].tlv;
         h_jets_pairs_m->Fill( (tlv_1 + tlv_2).M() );
       }

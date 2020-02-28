@@ -12,7 +12,7 @@ namespace hzura {
       index = -1;
     }
     
-    virtual inline int Charge();
+    virtual inline Float_t Charge() const { return 0; };
 
     int index;
     TLorentzVector tlv;
@@ -23,6 +23,7 @@ namespace hzura {
   class Photon : public Particle {
     public:
     void Init(const int & i){
+      index = i;
       tlv.SetPtEtaPhiM(hzura::glob::event->Photons_pt[index], hzura::glob::event->Photons_eta[index], hzura::glob::event->Photons_phi[index], 0 );
     }
 
@@ -35,7 +36,7 @@ namespace hzura {
       index = i;
       tlv.SetPtEtaPhiM(hzura::glob::event->Electrons_pt[index], hzura::glob::event->Electrons_eta[index], hzura::glob::event->Electrons_phi[index], 0.005 );
     }
-    inline int Charge() const { return hzura::glob::event->Electrons_charge[index]; }
+    inline Float_t Charge() const override { return hzura::glob::event->Electrons_charge[index]; }
   };
 
   class Muon : public Particle {
@@ -44,7 +45,7 @@ namespace hzura {
       index = i;
       tlv.SetPtEtaPhiM(hzura::glob::event->Muons_pt[index], hzura::glob::event->Muons_eta[index], hzura::glob::event->Muons_phi[index], 0.105 );
     }
-    inline int Charge() const { return hzura::glob::event->Muons_charge[index]; }
+    inline Float_t Charge() const override { return hzura::glob::event->Muons_charge[index]; }
   };
 
   class Jet : public Particle {
@@ -56,7 +57,7 @@ namespace hzura {
       btag_DeepFlavour_val = -1;
     }
 
-    inline int Charge() const { return hzura::glob::event->Jets_charge[index]; }
+    inline Float_t Charge() const override { return hzura::glob::event->Jets_charge[index]; }
 
     bool btag_DeepCSV_isLoose, btag_DeepCSV_isMedium, btag_DeepCSV_isTight;
     bool btag_DeepFlavour_isLoose, btag_DeepFlavour_isMedium, btag_DeepFlavour_isTight;
