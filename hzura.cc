@@ -47,6 +47,9 @@ int main(int argc, char *argv[]) { // FIXME
   string input_file = argv[1];
 
   int verbose_lvl = pmlib::verbose::VERBOSE;
+  hzura::glob::year_era = "2016";
+  get_muons_sf_reader();
+
   MSG_INFO("hzura::main(): process input file", input_file);
 
   // WORKFLOW :
@@ -139,7 +142,7 @@ int main(int argc, char *argv[]) { // FIXME
   hzura::Jet      jet_candidate;
 
   MSG_INFO("hzura::main(): start loop, total number of events", entrys);
-  // entrys = TMath::Min( (Long64_t)100, entrys);
+  entrys = TMath::Min( (Long64_t)100, entrys);
 
   for(;entry < entrys; entry++){
     hzura::glob::event->GetEntry(entry);
@@ -163,25 +166,29 @@ int main(int argc, char *argv[]) { // FIXME
 
     // photons =-
     for(int i = 0; i < event->Photons_; i++){
-      // msg( "pho pt eta phi", i, event->Photons_pt[i], event->Photons_eta[i], event->Photons_phi[i] );
-      if( event->Photons_pt[i] < Photons_pt_cut ) continue;
-      if( TMath::Abs( event->Photons_eta[i] ) > Photons_eta_cut ) continue;
-      if( TMath::Abs( event->Photons_eta[i] ) > Photons_eta_hole_cut_start and TMath::Abs( event->Photons_eta[i] ) < Photons_eta_hole_cut_end ) continue;
-      if( not event->Photons_isLoose[i] ) continue;
-      // if( not event->Photons_isTight[i] ) continue;
-
-      // msg( "passed! " );
       photon_candidate.Init( i );
+      apply_energy_correction( photon_candidate, "ecalEnergyPostCorr" );
+      TLorentzVector & vec = photon_candidate.tlv;
+
+      if( vec.Pt() < Photons_pt_cut ) continue;
+      if( TMath::Abs( vec.Eta() ) > Photons_eta_cut ) continue;
+      if( TMath::Abs( vec.Eta() ) > Photons_eta_hole_cut_start and TMath::Abs( vec.Eta() ) < Photons_eta_hole_cut_end ) continue;
+      if( not event->Photons_isLoose[i] ) continue;
+
       photon_candidates.emplace_back( photon_candidate );
     }
 
     // electrons =-
     for(int i = 0; i < event->Electrons_; i++){
-      if( event->Electrons_pt[i] < Electron_pt_cut ) continue;
-      if( TMath::Abs( event->Electrons_eta[i] ) > Electron_eta_cut ) continue;
-      if( TMath::Abs( event->Electrons_eta[i] ) > Electron_eta_hole_cut_start and TMath::Abs( event->Electrons_eta[i] ) < Electron_eta_hole_cut_end ) continue;
-
       electron_candidate.Init( i );
+      apply_energy_correction( electron_candidate, "ecalTrkEnergyPostCorr" );
+      TLorentzVector & vec = electron_candidate.tlv;
+
+      if( vec.Pt() < Electron_pt_cut ) continue;
+      if( TMath::Abs( vec.Eta() ) > Electron_eta_cut ) continue;
+      if( TMath::Abs( vec.Eta() ) > Electron_eta_hole_cut_start and TMath::Abs( vec.Eta() ) < Electron_eta_hole_cut_end ) continue;
+      if( not event->Electrons_isLoose[i] ) continue;
+
       electron_candidates.emplace_back( electron_candidate );
     }
 
@@ -189,6 +196,14 @@ int main(int argc, char *argv[]) { // FIXME
     for(int i = 0; i < event->Muons_; i++){
       if( event->Muons_pt[i] < Muon_pt_cut ) continue;
       if( TMath::Abs( event->Muons_eta[i] ) > Muon_eta_cut ) continue;
+      if( not event->Muons_isLoose[i] ) continue;
+
+      // TODO add loose medium tight ISO selections ...
+      // TODO add calc of muon SFs ...
+      // TODO add calc of events based on muons SFs ...
+
+      // TODO SFs for photons   ???
+      // TODO SFs for electrons ???
 
       muon_candidate.Init( i );
       muon_candidates.emplace_back( muon_candidate );

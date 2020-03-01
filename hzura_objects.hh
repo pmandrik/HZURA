@@ -45,6 +45,8 @@ namespace hzura {
       index = i;
       tlv.SetPtEtaPhiM(hzura::glob::event->Muons_pt[index], hzura::glob::event->Muons_eta[index], hzura::glob::event->Muons_phi[index], 0.105 );
     }
+
+    vector<Float_t> sf_weights;
     inline Float_t Charge() const override { return hzura::glob::event->Muons_charge[index]; }
   };
 
