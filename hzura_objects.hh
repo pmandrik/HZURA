@@ -25,8 +25,13 @@ namespace hzura {
     void Init(const int & i){
       index = i;
       tlv.SetPtEtaPhiM(hzura::glob::event->Photons_pt[index], hzura::glob::event->Photons_eta[index], hzura::glob::event->Photons_phi[index], 0 );
+
+      sf = 0;
+      sf_up = 0;
+      sf_down = 0;
     }
 
+    Float_t sf, sf_up, sf_down;
     Float_t iso;
   };
 

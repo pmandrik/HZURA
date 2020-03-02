@@ -4,6 +4,25 @@
 
 namespace hzura {
 
+  // DEFAULTS  ================================================================================================
+  template<class T> // hzura::Electron, hzura::Photon
+  void set_egamma_sfs(T & egamma, SFCalculator & sf_calculator, const string & sf_type){
+    const Double_t & eta = egamma.tlv.Eta();
+    const Double_t & pt  = egamma.tlv.Pt();
+
+    vector<Float_t *> valse = { & egamma.sf, & egamma.sf_up, & egamma.sf_down };
+    vector<int> unc_vals = {0, 1, -1};
+    if( sf_type == "loose" )
+      for(int i = 0; i < valse.size(); i++)
+        *( valse[i] ) = sf_calculator.GetSF_loose(eta, pt, unc_vals[i]);
+    else if( sf_type == "medium" )
+      for(int i = 0; i < valse.size(); i++)
+        *( valse[i] ) = sf_calculator.GetSF_medium(eta, pt, unc_vals[i]);
+    else if( sf_type == "tight" )
+      for(int i = 0; i < valse.size(); i++) 
+        *( valse[i] ) = sf_calculator.GetSF_tight(eta, pt, unc_vals[i]);
+  }
+
   // PHOTONS ================================================================================================
   void calc_photon_iso(hzura::Photon * p){
     // ??? FIXME
@@ -79,23 +98,6 @@ namespace hzura {
       else if( type == "energySigmaRhoDown" ) E_corrected = hzura::glob::event->Electrons_energySigmaRhoDown[index]; //  energy with the ecal energy smearing value shifted 1 sigma(rho) down
       
       p.tlv = p.tlv * (E_corrected / p.tlv.E());
-  }
-
-  void set_electrons_sfs(hzura::Electron & electron, SFCalculator & sf_calculator, const string & sf_type){
-    const Double_t & eta = electron.tlv.Eta();
-    const Double_t & pt  = electron.tlv.Pt();
-
-    vector<Float_t *> valse = { & electron.sf, & electron.sf_up, & electron.sf_down };
-    vector<int> unc_vals = {0, 1, -1};
-    if( sf_type == "loose" )
-      for(int i = 0; i < valse.size(); i++)
-        *( valse[i] ) = sf_calculator.GetSF_loose(eta, pt, unc_vals[i]);
-    else if( sf_type == "medium" )
-      for(int i = 0; i < valse.size(); i++)
-        *( valse[i] ) = sf_calculator.GetSF_medium(eta, pt, unc_vals[i]);
-    else if( sf_type == "tight" )
-      for(int i = 0; i < valse.size(); i++) 
-        *( valse[i] ) = sf_calculator.GetSF_tight(eta, pt, unc_vals[i]);
   }
 
   // MUONS ================================================================================================

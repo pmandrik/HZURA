@@ -189,6 +189,28 @@ namespace hzura {
     std::function<Float_t (const Float_t &, const Float_t &, const int &)> GetSF_iso_loose, GetSF_iso_medium, GetSF_iso_tight;
   };
 
+  // photons SFs .., TODO 2017 2018
+  SFCalculator get_photons_sf_reader(){
+    // https://twiki.cern.ch/twiki/bin/viewauth/CMS/EgammaIDRecipesRun2#Photon_efficiencies_and_scale_fa
+    SFCalculator answer; 
+
+    if(hzura::glob::year_era == "2016"){ // Fall17V2 2017 ID ???
+      SFFileReader *sf_l  = new SFFileReader( "data/photons_sf_2016/Fall17V2_2016_Loose_photons.root" );
+      SFFileReader *sf_m  = new SFFileReader( "data/photons_sf_2016/Fall17V2_2016_Medium_photons.root" );
+      SFFileReader *sf_t  = new SFFileReader( "data/photons_sf_2016/Fall17V2_2016_Tight_photons.root" );
+
+      answer.AddReader( "l",  sf_l );
+      answer.AddReader( "m",  sf_m );
+      answer.AddReader( "t",  sf_t );
+
+      answer.hname_loose  = "EGamma_SF2D";
+      answer.hname_medium = "EGamma_SF2D";
+      answer.hname_tight  = "EGamma_SF2D";
+    }
+
+    return answer;
+  }
+
   // electrons SFs .., TODO 2017 2018
   SFCalculator get_electrons_sf_reader(){
     // https://twiki.cern.ch/twiki/bin/viewauth/CMS/EgammaIDRecipesRun2#Electron_efficiencies_and_scale

@@ -50,6 +50,7 @@ int main(int argc, char *argv[]) { // FIXME
   hzura::glob::year_era = "2016";
   SFCalculator muon_sf_calculator = get_muons_sf_reader();
   SFCalculator electron_sf_calculator = get_electrons_sf_reader();
+  SFCalculator photon_sf_calculator  = get_photons_sf_reader();
 
   MSG_INFO("hzura::main(): process input file", input_file);
 
@@ -176,9 +177,10 @@ int main(int argc, char *argv[]) { // FIXME
       if( TMath::Abs( vec.Eta() ) > Photons_eta_hole_cut_start and TMath::Abs( vec.Eta() ) < Photons_eta_hole_cut_end ) continue;
       if( not event->Photons_isLoose[i] ) continue;
 
-      photon_candidates.emplace_back( photon_candidate );
+      set_egamma_sfs( photon_candidate, photon_sf_calculator, "loose" );
+      msg( "photons sf", photon_candidate.sf, photon_candidate.sf_up, photon_candidate.sf_down );
 
-      // TODO SFs for photons   ???
+      photon_candidates.emplace_back( photon_candidate );
     }
 
     // electrons =-
@@ -192,12 +194,12 @@ int main(int argc, char *argv[]) { // FIXME
       if( TMath::Abs( vec.Eta() ) > Electron_eta_hole_cut_start and TMath::Abs( vec.Eta() ) < Electron_eta_hole_cut_end ) continue;
       if( not event->Electrons_isLoose[i] ) continue;
 
-      set_electrons_sfs( electron_candidate, electron_sf_calculator, "loose" );
+      set_egamma_sfs( electron_candidate, electron_sf_calculator, "loose" );
       msg( "electrons sf", electron_candidate.sf, electron_candidate.sf_up, electron_candidate.sf_down );
 
       electron_candidates.emplace_back( electron_candidate );
 
-      // TODO ISO for electrons ???
+      // TODO ISO cuts for electrons ???
     }
 
     // muons =-
