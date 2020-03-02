@@ -35,7 +35,13 @@ namespace hzura {
     void Init(const int & i){
       index = i;
       tlv.SetPtEtaPhiM(hzura::glob::event->Electrons_pt[index], hzura::glob::event->Electrons_eta[index], hzura::glob::event->Electrons_phi[index], 0.005 );
+
+      sf = 0;
+      sf_up = 0;
+      sf_down = 0;
     }
+
+    Float_t sf, sf_up, sf_down;
     inline Float_t Charge() const override { return hzura::glob::event->Electrons_charge[index]; }
   };
 
@@ -44,9 +50,21 @@ namespace hzura {
     void Init(const int & i){
       index = i;
       tlv.SetPtEtaPhiM(hzura::glob::event->Muons_pt[index], hzura::glob::event->Muons_eta[index], hzura::glob::event->Muons_phi[index], 0.105 );
+      isLooseISO  = false;
+      isMediumISO = false;
+      isTightISO  = false;
+
+      sf_id = 0;
+      sf_id_up = 0; 
+      sf_id_down = 0;
+      sf_iso = 0;
+      sf_iso_up = 0;
+      sf_iso_down = 0;
     }
 
-    vector<Float_t> sf_weights;
+    bool isLooseISO, isMediumISO, isTightISO;
+    Float_t sf_id,   sf_id_up, sf_id_down;
+    Float_t sf_iso, sf_iso_up, sf_iso_down;
     inline Float_t Charge() const override { return hzura::glob::event->Muons_charge[index]; }
   };
 

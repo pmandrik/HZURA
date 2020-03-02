@@ -5,7 +5,7 @@
 // hzura
 #include <hzura_objects.hh>
 #include <hzura_analyses_helpers.hh>
-#include <hzura_selection_helpers.hh>
+#include <hzura_objects_helpers.hh>
 
 // GRIDNER interface
 #include <Events.C>
@@ -48,7 +48,8 @@ int main(int argc, char *argv[]) { // FIXME
 
   int verbose_lvl = pmlib::verbose::VERBOSE;
   hzura::glob::year_era = "2016";
-  get_muons_sf_reader();
+  SFCalculator muon_sf_calculator = get_muons_sf_reader();
+  SFCalculator electron_sf_calculator = get_electrons_sf_reader();
 
   MSG_INFO("hzura::main(): process input file", input_file);
 
@@ -142,7 +143,7 @@ int main(int argc, char *argv[]) { // FIXME
   hzura::Jet      jet_candidate;
 
   MSG_INFO("hzura::main(): start loop, total number of events", entrys);
-  entrys = TMath::Min( (Long64_t)100, entrys);
+  entrys = TMath::Min( (Long64_t)1000, entrys);
 
   for(;entry < entrys; entry++){
     hzura::glob::event->GetEntry(entry);
@@ -176,6 +177,8 @@ int main(int argc, char *argv[]) { // FIXME
       if( not event->Photons_isLoose[i] ) continue;
 
       photon_candidates.emplace_back( photon_candidate );
+
+      // TODO SFs for photons   ???
     }
 
     // electrons =-
@@ -189,7 +192,12 @@ int main(int argc, char *argv[]) { // FIXME
       if( TMath::Abs( vec.Eta() ) > Electron_eta_hole_cut_start and TMath::Abs( vec.Eta() ) < Electron_eta_hole_cut_end ) continue;
       if( not event->Electrons_isLoose[i] ) continue;
 
+      set_electrons_sfs( electron_candidate, electron_sf_calculator, "loose" );
+      msg( "electrons sf", electron_candidate.sf, electron_candidate.sf_up, electron_candidate.sf_down );
+
       electron_candidates.emplace_back( electron_candidate );
+
+      // TODO ISO for electrons ???
     }
 
     // muons =-
@@ -198,14 +206,16 @@ int main(int argc, char *argv[]) { // FIXME
       if( TMath::Abs( event->Muons_eta[i] ) > Muon_eta_cut ) continue;
       if( not event->Muons_isLoose[i] ) continue;
 
-      // TODO add loose medium tight ISO selections ...
-      // TODO add calc of muon SFs ...
-      // TODO add calc of events based on muons SFs ...
-
-      // TODO SFs for photons   ???
-      // TODO SFs for electrons ???
-
       muon_candidate.Init( i );
+      calc_muon_iso( muon_candidate );
+      if( not muon_candidate.isLooseISO ) continue;
+
+      set_muon_sfs( muon_candidate, muon_sf_calculator, "loose" );
+
+      // msg( "muons", i, "/", event->Muons_, hzura::glob::event->Muons_relIsoPF[ i ], hzura::glob::event->Muons_relIsoTrk[ i ], muon_candidate.isLooseISO, muon_candidate.isMediumISO, muon_candidate.isTightISO );
+      // msg( "muon sf id", muon_candidate.sf_id, muon_candidate.sf_id_up, muon_candidate.sf_id_down);
+      // msg( "muon sf iso", muon_candidate.sf_iso, muon_candidate.sf_iso_up, muon_candidate.sf_iso_down);
+
       muon_candidates.emplace_back( muon_candidate );
     }
 
@@ -352,6 +362,8 @@ int main(int argc, char *argv[]) { // FIXME
 
     // 5. calculate main weights
     // 6. calculate systematics weights
+    // TODO calc central and event weights based on muons SFs ...
+
   }
 
   file_out->cd();

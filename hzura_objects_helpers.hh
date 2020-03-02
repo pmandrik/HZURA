@@ -1,12 +1,12 @@
 
-#ifndef hzura_selection_helpers_h
-#define hzura_selection_helpers_h 1
+#ifndef hzura_objects_helpers_h
+#define hzura_objects_helpers_h 1
 
 namespace hzura {
 
   // PHOTONS ================================================================================================
   void calc_photon_iso(hzura::Photon * p){
-    // ???
+    // ??? FIXME
     // https://twiki.cern.ch/twiki/bin/view/CMS/EgammaPFBasedIsolationRun2
     // https://arxiv.org/pdf/1502.02702.pdf
     // https://twiki.cern.ch/twiki/bin/view/CMS/CutBasedPhotonIdentificationRun2
@@ -81,8 +81,55 @@ namespace hzura {
       p.tlv = p.tlv * (E_corrected / p.tlv.E());
   }
 
+  void set_electrons_sfs(hzura::Electron & electron, SFCalculator & sf_calculator, const string & sf_type){
+    const Double_t & eta = electron.tlv.Eta();
+    const Double_t & pt  = electron.tlv.Pt();
+
+    vector<Float_t *> valse = { & electron.sf, & electron.sf_up, & electron.sf_down };
+    vector<int> unc_vals = {0, 1, -1};
+    if( sf_type == "loose" )
+      for(int i = 0; i < valse.size(); i++)
+        *( valse[i] ) = sf_calculator.GetSF_loose(eta, pt, unc_vals[i]);
+    else if( sf_type == "medium" )
+      for(int i = 0; i < valse.size(); i++)
+        *( valse[i] ) = sf_calculator.GetSF_medium(eta, pt, unc_vals[i]);
+    else if( sf_type == "tight" )
+      for(int i = 0; i < valse.size(); i++) 
+        *( valse[i] ) = sf_calculator.GetSF_tight(eta, pt, unc_vals[i]);
+  }
+
   // MUONS ================================================================================================
-  
+  void calc_muon_iso(hzura::Muon & muon){
+    // https://twiki.cern.ch/twiki/bin/viewauth/CMS/SWGuideMuonIdRun2#Particle_Flow_isolation
+    const int & index = muon.index;
+    Float_t iso = hzura::glob::event->Muons_relIsoPF[ index ];
+
+    if( iso < 0.25 ) muon.isLooseISO = true;  else return;
+    if( iso < 0.20 ) muon.isMediumISO = true; else return;
+    if( iso < 0.15 ) muon.isTightISO = true;  else return;
+  }
+
+  void set_muon_sfs(hzura::Muon & muon, SFCalculator & muon_sf_calculator, const string & sf_type){
+    const Double_t & eta = muon.tlv.Eta();
+    const Double_t & pt  = muon.tlv.Pt();
+
+    if( sf_type == "loose" ){
+      muon.sf_id       = muon_sf_calculator.GetSF_id_loose(  eta, pt,  0 );
+      muon.sf_id_up    = muon_sf_calculator.GetSF_id_loose(  eta, pt,  1 );
+      muon.sf_id_down  = muon_sf_calculator.GetSF_id_loose(  eta, pt, -1 );
+      muon.sf_iso      = muon_sf_calculator.GetSF_iso_loose(  eta, pt,  0 );
+      muon.sf_iso_up   = muon_sf_calculator.GetSF_iso_loose(  eta, pt,  1 );
+      muon.sf_iso_down = muon_sf_calculator.GetSF_iso_loose(  eta, pt, -1 );
+    } else 
+    if( sf_type == "tight" ){
+      muon.sf_id       = muon_sf_calculator.GetSF_id_tight(  eta, pt,  0 );
+      muon.sf_id_up    = muon_sf_calculator.GetSF_id_tight(  eta, pt,  1 );
+      muon.sf_id_down  = muon_sf_calculator.GetSF_id_tight(  eta, pt, -1 );
+      muon.sf_iso      = muon_sf_calculator.GetSF_iso_tight(  eta, pt,  0 );
+      muon.sf_iso_up   = muon_sf_calculator.GetSF_iso_tight(  eta, pt,  1 );
+      muon.sf_iso_down = muon_sf_calculator.GetSF_iso_tight(  eta, pt, -1 );
+    }
+  }
 
   // JETS ================================================================================================
   void calc_btag_variables(hzura::Jet * j){
