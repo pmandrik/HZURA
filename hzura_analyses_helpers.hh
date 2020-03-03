@@ -6,6 +6,9 @@
 #include "pmlib_msg.hh"
 using namespace pmlib;
 
+#include "BTagCalibrationStandalone.h"
+#include "BTagCalibrationStandalone.cpp"
+
 namespace hzura {
 
   // BASIC SELECTORS ===============================================================================================
@@ -84,6 +87,54 @@ namespace hzura {
 
   template <typename A, typename B> void make_diffCharge_combinations( const vector<A> & inp_1, const vector<B> & inp_2, vector<Particle> & out ){
     make_combinations_filtered(inp_1, inp_2, out, [](Particle * a, Particle * b) { return (a->Charge() == b->Charge()); } );
+  }
+
+  // btag SF readers ===============================================================================================
+  class BTagSFReader{
+    public:
+      BTagSFReader(const std::string & working_point_, const std::string & jet_flavour_){
+        working_point = working_point_;
+        jet_flavour   = jet_flavour_;
+        
+        if( working_point == "loose"  ) wp = BTagEntry::OP_LOOSE;
+        if( working_point == "medium" ) wp = BTagEntry::OP_MEDIUM;
+        if( working_point == "tight"  ) wp = BTagEntry::OP_TIGHT;
+
+        if( jet_flavour == "b" ) jf = BTagEntry::FLAV_B;
+        if( jet_flavour == "c" ) jf = BTagEntry::FLAV_C;
+        if( jet_flavour == "l" ) jf = BTagEntry::FLAV_UDSG;
+
+        reader = BTagCalibrationReader(wp, "central", {"up", "down"});
+      }
+
+      void AddFile(const std::string tagger_name, const std::string file){
+        msg("hzura::BTagSFReader.AddFile(): loading ", tagger_name, " from ", file);
+        BTagCalibration calib(tagger_name.c_str(), file.c_str());
+        msg("hzura::BTagSFReader.AddFile(): ...");
+        reader.load(calib, jf, "comb");
+        msg("hzura::BTagSFReader.AddFile(): ... ok");
+      }
+
+      Float_t GetSF(const std::string type, const Float_t & eta, const Float_t & pt) const {
+        return reader.eval_auto_bounds(type, jf, eta, pt);
+      }
+    
+      BTagEntry::OperatingPoint wp;
+      BTagEntry::JetFlavor jf;
+      std::string working_point, jet_flavour;
+      BTagCalibrationReader reader;
+  };
+
+  BTagSFReader get_btag_sf_reader(const std::string & working_point, const std::string & jet_flavour){ // TODO 2017 2018
+    // https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation2016Legacy
+    // https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation94X
+    // https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation102X
+    BTagSFReader answer(working_point, jet_flavour);
+    if(hzura::glob::year_era == "2016")
+      answer.AddFile("DeepCSV", "data/jets_sf_2016/DeepCSV_2016LegacySF_WP_V1.csv"); // jets_sf_2016/DeepCSV_2016LegacySF_V1.csv
+    // if(hzura::glob::year_era == "2017")
+    // if(hzura::glob::year_era == "2018")
+    return answer;
   }
 
   // SF readers ===============================================================================================

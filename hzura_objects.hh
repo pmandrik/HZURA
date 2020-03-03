@@ -6,6 +6,28 @@
 
 namespace hzura {
 
+  struct Weight {
+    Weight(){
+      c = 0.f;
+      u = 0.f;
+      d = 0.f;
+    }
+
+    void Set(const Float_t & val){
+      c = val;
+      u = val;
+      d = val;
+    }
+
+    void Mult(const Weight & item){
+      c *= item.c;
+      u *= item.u;
+      d *= item.d;
+    }
+
+    Float_t c, u, d;
+  };
+
   class Particle {
     public:
     Particle(){
@@ -25,13 +47,9 @@ namespace hzura {
     void Init(const int & i){
       index = i;
       tlv.SetPtEtaPhiM(hzura::glob::event->Photons_pt[index], hzura::glob::event->Photons_eta[index], hzura::glob::event->Photons_phi[index], 0 );
-
-      sf = 0;
-      sf_up = 0;
-      sf_down = 0;
     }
 
-    Float_t sf, sf_up, sf_down;
+    Weight sf;
     Float_t iso;
   };
 
@@ -40,13 +58,9 @@ namespace hzura {
     void Init(const int & i){
       index = i;
       tlv.SetPtEtaPhiM(hzura::glob::event->Electrons_pt[index], hzura::glob::event->Electrons_eta[index], hzura::glob::event->Electrons_phi[index], 0.005 );
-
-      sf = 0;
-      sf_up = 0;
-      sf_down = 0;
     }
 
-    Float_t sf, sf_up, sf_down;
+    Weight sf;
     inline Float_t Charge() const override { return hzura::glob::event->Electrons_charge[index]; }
   };
 
@@ -58,18 +72,10 @@ namespace hzura {
       isLooseISO  = false;
       isMediumISO = false;
       isTightISO  = false;
-
-      sf_id = 0;
-      sf_id_up = 0; 
-      sf_id_down = 0;
-      sf_iso = 0;
-      sf_iso_up = 0;
-      sf_iso_down = 0;
     }
 
     bool isLooseISO, isMediumISO, isTightISO;
-    Float_t sf_id,   sf_id_up, sf_id_down;
-    Float_t sf_iso, sf_iso_up, sf_iso_down;
+    Weight sf_id, sf_iso;
     inline Float_t Charge() const override { return hzura::glob::event->Muons_charge[index]; }
   };
 
@@ -80,6 +86,8 @@ namespace hzura {
       tlv.SetPtEtaPhiM(hzura::glob::event->Jets_pt[index], hzura::glob::event->Jets_eta[index], hzura::glob::event->Jets_phi[index], hzura::glob::event->Jets_m[index] );
       btag_DeepCSV_val     = -1;
       btag_DeepFlavour_val = -1;
+
+      eff_btag.Set( 1.) ;
     }
 
     inline Float_t Charge() const override { return hzura::glob::event->Jets_charge[index]; }
@@ -88,6 +96,9 @@ namespace hzura {
     bool btag_DeepFlavour_isLoose, btag_DeepFlavour_isMedium, btag_DeepFlavour_isTight;
 
     Float_t btag_DeepCSV_val, btag_DeepFlavour_val;
+
+    Weight sf_btag, sf_id;
+    Weight eff_btag;
   };
 
   class Met : public Particle {

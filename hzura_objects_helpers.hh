@@ -4,23 +4,67 @@
 
 namespace hzura {
 
-  // DEFAULTS  ================================================================================================
-  template<class T> // hzura::Electron, hzura::Photon
-  void set_egamma_sfs(T & egamma, SFCalculator & sf_calculator, const string & sf_type){
-    const Double_t & eta = egamma.tlv.Eta();
-    const Double_t & pt  = egamma.tlv.Pt();
+  // EVENTS  ================================================================================================
+  struct EventWeights {
+    EventWeights(){
+      sf_photons.Set( 1.f );
+      sf_electrons.Set( 1.f );
+      sf_muons_id.Set( 1.f );
+      sf_muons_iso.Set( 1.f );
+      sf_ljets_id.Set( 1.f );
+      sf_ljets_btag.Set( 1.f );
+      sf_bjets_id.Set( 1.f );
+      sf_bjets_btag.Set( 1.f );
+    }
 
-    vector<Float_t *> valse = { & egamma.sf, & egamma.sf_up, & egamma.sf_down };
-    vector<int> unc_vals = {0, 1, -1};
-    if( sf_type == "loose" )
-      for(int i = 0; i < valse.size(); i++)
-        *( valse[i] ) = sf_calculator.GetSF_loose(eta, pt, unc_vals[i]);
-    else if( sf_type == "medium" )
-      for(int i = 0; i < valse.size(); i++)
-        *( valse[i] ) = sf_calculator.GetSF_medium(eta, pt, unc_vals[i]);
-    else if( sf_type == "tight" )
-      for(int i = 0; i < valse.size(); i++) 
-        *( valse[i] ) = sf_calculator.GetSF_tight(eta, pt, unc_vals[i]);
+    Weight sf_photons, sf_electrons, sf_muons_id, sf_muons_iso;
+    Weight sf_ljets_id, sf_ljets_btag;
+    Weight sf_bjets_id, sf_bjets_btag;
+  };
+
+  EventWeights calc_event_weight(const vector<Photon> & selected_photons, const vector<Electron> & selected_electrons, const vector<Muon> & selected_muons,
+                            const vector<Jet> & selected_ljets,  const vector<Jet> selected_bjets){
+    EventWeights ews;
+    // apply photons SFs
+    // ID+ISO
+    for(const Photon & obj : selected_photons)
+      ews.sf_photons.Mult( obj.sf );
+
+    // apply electrons SFs
+    // ID+ISO
+    for(const Electron & obj : selected_electrons)
+      ews.sf_electrons.Mult( obj.sf );
+
+    // apply muons SFs
+    // ID+ISO
+    for(const Muon & obj : selected_muons){
+      ews.sf_muons_id.Mult( obj.sf_id );
+      ews.sf_muons_iso.Mult( obj.sf_iso );
+    }
+
+    // apply bjets SFs
+    // ID + btag
+    for(const Jet & obj : selected_ljets){
+      ews.sf_ljets_id;
+
+      ews.sf_ljets_btag.c *= 1. - obj.sf_btag.c * obj.eff_btag.c;
+      ews.sf_ljets_btag.u *= 1. - obj.sf_btag.u * obj.eff_btag.u;
+      ews.sf_ljets_btag.d *= 1. - obj.sf_btag.d * obj.eff_btag.d;
+    }
+
+    // apply bjets SFs
+    // ID + btag
+    for(const Jet & obj : selected_bjets){
+      ews.sf_bjets_id;
+
+      ews.sf_bjets_btag.c *= obj.sf_btag.c * obj.eff_btag.c;
+      ews.sf_bjets_btag.u *= obj.sf_btag.u * obj.eff_btag.u;
+      ews.sf_bjets_btag.d *= obj.sf_btag.d * obj.eff_btag.d;
+    }
+
+    // total
+    // Float_t weight = weight_photons * weight_electrons * weight_muons_id * weight_muons_iso;
+    return ews;
   }
 
   // PHOTONS ================================================================================================
@@ -72,6 +116,24 @@ namespace hzura {
       p.tlv = p.tlv * (E_corrected / p.tlv.E());
   }
 
+  template<class T> // hzura::Electron, hzura::Photon
+  void set_egamma_sfs(T & egamma, SFCalculator & sf_calculator, const string & sf_type){
+    const Double_t & eta = egamma.tlv.Eta();
+    const Double_t & pt  = egamma.tlv.Pt();
+
+    vector<Float_t *> valse = { & egamma.sf.c, & egamma.sf.u, & egamma.sf.d };
+    vector<int> unc_vals = {0, 1, -1};
+    if( sf_type == "loose" )
+      for(int i = 0; i < valse.size(); i++)
+        *( valse[i] ) = sf_calculator.GetSF_loose(eta, pt, unc_vals[i]);
+    else if( sf_type == "medium" )
+      for(int i = 0; i < valse.size(); i++)
+        *( valse[i] ) = sf_calculator.GetSF_medium(eta, pt, unc_vals[i]);
+    else if( sf_type == "tight" )
+      for(int i = 0; i < valse.size(); i++) 
+        *( valse[i] ) = sf_calculator.GetSF_tight(eta, pt, unc_vals[i]);
+  }
+
   // ELECTRONS ================================================================================================
   void apply_energy_correction( Electron & p, const string & type ){
     // https://twiki.cern.ch/twiki/bin/viewauth/CMS/EgammaMiniAODV2#Applying_the_Energy_Scale_and_sm
@@ -116,27 +178,27 @@ namespace hzura {
     const Double_t & pt  = muon.tlv.Pt();
 
     if( sf_type == "loose" ){
-      muon.sf_id       = muon_sf_calculator.GetSF_id_loose(  eta, pt,  0 );
-      muon.sf_id_up    = muon_sf_calculator.GetSF_id_loose(  eta, pt,  1 );
-      muon.sf_id_down  = muon_sf_calculator.GetSF_id_loose(  eta, pt, -1 );
-      muon.sf_iso      = muon_sf_calculator.GetSF_iso_loose(  eta, pt,  0 );
-      muon.sf_iso_up   = muon_sf_calculator.GetSF_iso_loose(  eta, pt,  1 );
-      muon.sf_iso_down = muon_sf_calculator.GetSF_iso_loose(  eta, pt, -1 );
+      muon.sf_id.c   = muon_sf_calculator.GetSF_id_loose(  eta, pt,  0 );
+      muon.sf_id.u   = muon_sf_calculator.GetSF_id_loose(  eta, pt,  1 );
+      muon.sf_id.d   = muon_sf_calculator.GetSF_id_loose(  eta, pt, -1 );
+      muon.sf_iso.c  = muon_sf_calculator.GetSF_iso_loose(  eta, pt,  0 );
+      muon.sf_iso.u  = muon_sf_calculator.GetSF_iso_loose(  eta, pt,  1 );
+      muon.sf_iso.d  = muon_sf_calculator.GetSF_iso_loose(  eta, pt, -1 );
     } else 
     if( sf_type == "tight" ){
-      muon.sf_id       = muon_sf_calculator.GetSF_id_tight(  eta, pt,  0 );
-      muon.sf_id_up    = muon_sf_calculator.GetSF_id_tight(  eta, pt,  1 );
-      muon.sf_id_down  = muon_sf_calculator.GetSF_id_tight(  eta, pt, -1 );
-      muon.sf_iso      = muon_sf_calculator.GetSF_iso_tight(  eta, pt,  0 );
-      muon.sf_iso_up   = muon_sf_calculator.GetSF_iso_tight(  eta, pt,  1 );
-      muon.sf_iso_down = muon_sf_calculator.GetSF_iso_tight(  eta, pt, -1 );
+      muon.sf_id.c   = muon_sf_calculator.GetSF_id_tight(  eta, pt,  0 );
+      muon.sf_id.u   = muon_sf_calculator.GetSF_id_tight(  eta, pt,  1 );
+      muon.sf_id.d   = muon_sf_calculator.GetSF_id_tight(  eta, pt, -1 );
+      muon.sf_iso.c  = muon_sf_calculator.GetSF_iso_tight(  eta, pt,  0 );
+      muon.sf_iso.u  = muon_sf_calculator.GetSF_iso_tight(  eta, pt,  1 );
+      muon.sf_iso.d  = muon_sf_calculator.GetSF_iso_tight(  eta, pt, -1 );
     }
   }
 
   // JETS ================================================================================================
-  void calc_btag_variables(hzura::Jet * j){
+  void calc_btag_variables(hzura::Jet & j){ // FIXME 2016 2017 2018
     Events * e = hzura::glob::event;
-    const int & i = j->index;
+    const int & i = j.index;
 
     // b-tagging
     // https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookMiniAOD2017#B_tagging
@@ -148,10 +210,10 @@ namespace hzura {
     // jet.pfDeepCSVJetTags_probudsg = j.bDiscriminator("pfDeepCSVJetTags:probudsg");
 
     // pfDeepCSVJetTags:probb + pfDeepCSVJetTags:probbb 
-    j->btag_DeepCSV_val = e->Jets_pfDeepCSVJetTags_probb[i] + e->Jets_pfDeepCSVJetTags_probbb[i];
-    j->btag_DeepCSV_isLoose  = (j->btag_DeepCSV_val > 0.1241) ? true : false;
-    j->btag_DeepCSV_isMedium = (j->btag_DeepCSV_val > 0.4184) ? true : false;
-    j->btag_DeepCSV_isTight  = (j->btag_DeepCSV_val > 0.7527) ? true : false;
+    j.btag_DeepCSV_val = e->Jets_pfDeepCSVJetTags_probb[i] + e->Jets_pfDeepCSVJetTags_probbb[i];
+    j.btag_DeepCSV_isLoose  = (j.btag_DeepCSV_val > 0.1241) ? true : false;
+    j.btag_DeepCSV_isMedium = (j.btag_DeepCSV_val > 0.4184) ? true : false;
+    j.btag_DeepCSV_isTight  = (j.btag_DeepCSV_val > 0.7527) ? true : false;
 
     // DeepJet
     // jet.pfDeepFlavourJetTags_probb    = j.bDiscriminator("pfDeepFlavourJetTags_probb");
@@ -162,13 +224,20 @@ namespace hzura {
     // jet.pfDeepFlavourJetTags_probg    = j.bDiscriminator("pfDeepFlavourJetTags:probg");
 
     // pfDeepFlavourJetTags:probb + pfDeepFlavourJetTags:probbb + pfDeepFlavourJetTags:problepb
-    j->btag_DeepFlavour_val = e->Jets_pfDeepFlavourJetTags_probb[i] + e->Jets_pfDeepFlavourJetTags_probbb[i] + e->Jets_pfDeepFlavourJetTags_problepb[i];
-    j->btag_DeepFlavour_isLoose  = (j->btag_DeepFlavour_val > 0.0494) ? true : false;
-    j->btag_DeepFlavour_isMedium = (j->btag_DeepFlavour_val > 0.2770) ? true : false;
-    j->btag_DeepFlavour_isTight  = (j->btag_DeepFlavour_val > 0.7264) ? true : false;
+    j.btag_DeepFlavour_val = e->Jets_pfDeepFlavourJetTags_probb[i] + e->Jets_pfDeepFlavourJetTags_probbb[i] + e->Jets_pfDeepFlavourJetTags_problepb[i];
+    j.btag_DeepFlavour_isLoose  = (j.btag_DeepFlavour_val > 0.0494) ? true : false;
+    j.btag_DeepFlavour_isMedium = (j.btag_DeepFlavour_val > 0.2770) ? true : false;
+    j.btag_DeepFlavour_isTight  = (j.btag_DeepFlavour_val > 0.7264) ? true : false;
   };
 
-
+  void set_jet_btag_sfs(hzura::Jet & j, const BTagSFReader & btag_sf_calculator){
+    // https://twiki.cern.ch/twiki/bin/view/CMS/BTagCalibration#Standalone
+    const Float_t & pt  = j.tlv.Pt();
+    const Float_t & eta = j.tlv.Eta();
+    j.sf_btag.c = btag_sf_calculator.GetSF("central", eta, pt); 
+    j.sf_btag.u = btag_sf_calculator.GetSF("up", eta, pt); 
+    j.sf_btag.d = btag_sf_calculator.GetSF("down", eta, pt); 
+  };
 
 
 

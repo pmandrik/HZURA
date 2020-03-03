@@ -51,6 +51,7 @@ int main(int argc, char *argv[]) { // FIXME
   SFCalculator muon_sf_calculator = get_muons_sf_reader();
   SFCalculator electron_sf_calculator = get_electrons_sf_reader();
   SFCalculator photon_sf_calculator  = get_photons_sf_reader();
+  BTagSFReader btag_sf_calculator_b = get_btag_sf_reader("tight", "b");
 
   MSG_INFO("hzura::main(): process input file", input_file);
 
@@ -63,6 +64,7 @@ int main(int argc, char *argv[]) { // FIXME
   // 4. apply cuts
   // 5. calculate main weights
   // 6. calculate systematics weights
+  // TODO measure b-tag efficiency in MC samples https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation#Useful_Tools
 
   // create histos
   TFile * file_out = new TFile("hzura_out.root", "RECREATE");
@@ -178,7 +180,7 @@ int main(int argc, char *argv[]) { // FIXME
       if( not event->Photons_isLoose[i] ) continue;
 
       set_egamma_sfs( photon_candidate, photon_sf_calculator, "loose" );
-      msg( "photons sf", photon_candidate.sf, photon_candidate.sf_up, photon_candidate.sf_down );
+      msg( "photons sf", photon_candidate.sf.c, photon_candidate.sf.u, photon_candidate.sf.d );
 
       photon_candidates.emplace_back( photon_candidate );
     }
@@ -195,7 +197,7 @@ int main(int argc, char *argv[]) { // FIXME
       if( not event->Electrons_isLoose[i] ) continue;
 
       set_egamma_sfs( electron_candidate, electron_sf_calculator, "loose" );
-      msg( "electrons sf", electron_candidate.sf, electron_candidate.sf_up, electron_candidate.sf_down );
+      msg( "electrons sf", electron_candidate.sf.c, electron_candidate.sf.u, electron_candidate.sf.d );
 
       electron_candidates.emplace_back( electron_candidate );
 
@@ -229,12 +231,17 @@ int main(int argc, char *argv[]) { // FIXME
 
       jet_candidate.Init( i );
 
-      hzura::calc_btag_variables( & jet_candidate );
+      hzura::calc_btag_variables( jet_candidate );
+      hzura::set_jet_btag_sfs( jet_candidate, btag_sf_calculator_b );
 
-      if( jet_candidate.btag_DeepCSV_isTight ) 
+      msg("jets btag SFs", jet_candidate.sf_btag.c, jet_candidate.sf_btag.u, jet_candidate.sf_btag.d);
+
+      if( jet_candidate.btag_DeepCSV_isTight ){
         bjet_candidates.emplace_back( jet_candidate );
-      else
-         jet_candidates.emplace_back( jet_candidate );
+      }
+      else{
+        jet_candidates.emplace_back( jet_candidate );
+      }
     }
 
     // 2.5 make some control plots
