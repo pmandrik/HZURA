@@ -1,18 +1,27 @@
 
 // extra libraries
 #include "pmlib_msg.hh"
+using namespace pmlib;
+
+// external libraries 
+// https://twiki.cern.ch/twiki/bin/view/CMS/BTagCalibration#Standalone
+#include "BTagCalibrationStandalone.h"
+#include "BTagCalibrationStandalone.cpp"
+// https://twiki.cern.ch/twiki/bin/viewauth/CMS/MissingETRun2Corrections#xy_Shift_Correction_MET_phi_modu
+#include "XYMETCorrection.h"
 
 // hzura
+#include "hzura_cfg.hh"
 #include <hzura_objects.hh>
 #include <hzura_analyses_helpers.hh>
+#include <hzura_analyse_configuration_helpers.hh>
 #include <hzura_objects_helpers.hh>
+using namespace hzura;
 
 // GRIDNER interface
 #include <Events.C>
 #include <EventsMeta.C>
 
-using namespace hzura;
-using namespace pmlib;
 
 class Reader{
   public:
@@ -47,11 +56,13 @@ int main(int argc, char *argv[]) { // FIXME
   string input_file = argv[1];
 
   int verbose_lvl = pmlib::verbose::VERBOSE;
-  hzura::glob::year_era = "2016";
+  hzura::glob::Init( "2016", nullptr );
+
   SFCalculator muon_sf_calculator = get_muons_sf_reader();
   SFCalculator electron_sf_calculator = get_electrons_sf_reader();
   SFCalculator photon_sf_calculator  = get_photons_sf_reader();
   BTagSFReader btag_sf_calculator_b = get_btag_sf_reader("tight", "b");
+  PileUpSFReader pileup_sf_calculator = get_pileup_sf_reader();
 
   MSG_INFO("hzura::main(): process input file", input_file);
 
@@ -128,8 +139,8 @@ int main(int argc, char *argv[]) { // FIXME
 
   // 0. read events
   Reader * reader = new Reader( input_file );
-  hzura::glob::event = reader->event;
   Events * event     = reader->event;
+  hzura::glob::event = event;
 
   Long64_t entrys = hzura::glob::event->fChain->GetEntriesFast();
   Long64_t entry = 0;
@@ -144,6 +155,7 @@ int main(int argc, char *argv[]) { // FIXME
   hzura::Electron electron_candidate;
   hzura::Muon     muon_candidate;
   hzura::Jet      jet_candidate;
+  hzura::MET      met_candidate;
 
   MSG_INFO("hzura::main(): start loop, total number of events", entrys);
   entrys = TMath::Min( (Long64_t)1000, entrys);
@@ -244,7 +256,21 @@ int main(int argc, char *argv[]) { // FIXME
       }
     }
 
-    // 2.5 make some control plots
+    // PrimaryVertexes =-
+    // Pile-up reweight using
+    // https://github.com/pfs/BJetEnergyPeak/blob/master/scripts/runPileupEstimation.py
+
+    // met =-
+    // https://twiki.cern.ch/twiki/bin/viewauth/CMS/MissingETRun2Corrections#xy_Shift_Correction_MET_phi_modu
+    met_candidate.Init();
+
+    // METXYCorr_Met_MetPhi(double uncormet, double uncormet_phi, int runnb, int year, bool isMC, int npv)
+    std::pair<double,double> corr_pt_phi = METXYCorr_Met_MetPhi( met_candidate.pt, met_candidate.phi, hzura::glob::event->run, hzura::glob::year, hzura::glob::is_data, hzura::glob::event->RecoNumInteractions );
+    //met_candidate.corr_pt  = corr_pt_phi.first;
+    //met_candidate.corr_phi = corr_pt_phi.second;
+    msg("met pt,phi", corr_pt_phi.first, corr_pt_phi.second, "<-", met_candidate.pt, met_candidate.phi);
+
+    // 2.5 make some control plots ====================================================================================
     // check if ISO is used in ID criteria
     for( auto p : photon_candidates ){
       const Float_t & sumChargedHadronPt = hzura::glob::event->Photons_sumChargedHadronPt[ p.index ]; 
@@ -373,6 +399,14 @@ int main(int argc, char *argv[]) { // FIXME
     // 6. calculate systematics weights
     // TODO calc central and event weights based on muons SFs ...
 
+    auto selected_photons   = photon_candidates;
+    auto selected_electrons = electron_candidates;
+    auto selected_muons     = muon_candidates;
+    auto selected_ljets     = jet_candidates;
+    auto selected_bjets     = bjet_candidates;
+    auto wgt = calc_event_weight( selected_photons, selected_electrons, selected_muons, selected_ljets,  selected_bjets, pileup_sf_calculator);
+
+    wgt.Print();
   }
 
   file_out->cd();

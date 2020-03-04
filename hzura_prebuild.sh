@@ -9,6 +9,9 @@ wget --no-check-certificate -N --content-disposition https://raw.githubuserconte
 wget --no-check-certificate -N --content-disposition https://raw.githubusercontent.com/cms-sw/cmssw/CMSSW_10_0_X/CondTools/BTau/test/BTagCalibrationStandalone.h
 wget --no-check-certificate -N --content-disposition https://raw.githubusercontent.com/cms-sw/cmssw/CMSSW_10_0_X/CondTools/BTau/test/BTagCalibrationStandalone.cpp
 
+#wget --no-check-certificate -N --content-disposition https://lathomas.web.cern.ch/lathomas/METStuff/XYCorrections/XYMETCorrection.h
+
+
 ### analyses files =================
 mkdir data
 cd data

@@ -87,7 +87,7 @@ namespace hzura {
       btag_DeepCSV_val     = -1;
       btag_DeepFlavour_val = -1;
 
-      eff_btag.Set( 1.) ;
+      eff_btag.Set( 0.5)  ; // FIXME
     }
 
     inline Float_t Charge() const override { return hzura::glob::event->Jets_charge[index]; }
@@ -101,8 +101,25 @@ namespace hzura {
     Weight eff_btag;
   };
 
-  class Met : public Particle {
+  class MET : public Particle {
     public:
+    void Init(){
+      pt              = hzura::glob::event->pt;
+      eta             = hzura::glob::event->eta;
+      phi             = hzura::glob::event->phi;
+      gen_pt          = hzura::glob::event->gen_pt;
+      gen_phi         = hzura::glob::event->gen_phi;
+      significance    = hzura::glob::event->significance;
+      pt_unc_v_u      = hzura::glob::event->pt_unc_v_u;
+      pt_unc_v_d      = hzura::glob::event->pt_unc_v_d;      
+      phi_unc_v_u     = hzura::glob::event->phi_unc_v_u;
+      phi_unc_v_d     = hzura::glob::event->phi_unc_v_d;
+    }
+
+    Float_t         pt, eta, phi;
+    Float_t         gen_pt, gen_phi;
+    Float_t         significance;
+    vector<float>   pt_unc_v_u, pt_unc_v_d, phi_unc_v_u, phi_unc_v_d;
   };
 
 

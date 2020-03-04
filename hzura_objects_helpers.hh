@@ -15,15 +15,52 @@ namespace hzura {
       sf_ljets_btag.Set( 1.f );
       sf_bjets_id.Set( 1.f );
       sf_bjets_btag.Set( 1.f );
+      sf_pileup.Set( 1.f );
     }
+
+    void CombineWeights(){
+      combined_weights_names      = {"sf_photons", "sf_electrons", "sf_muons_id", "sf_muons_iso", "sf_ljets_id", "sf_ljets_btag", "sf_bjets_id", "sf_bjets_btag", "sf_pileup"};
+      vector<Weight*>     weights = {&sf_photons, &sf_electrons, &sf_muons_id, &sf_muons_iso, &sf_ljets_id, &sf_ljets_btag, &sf_bjets_id, &sf_bjets_btag, &sf_pileup};
+
+      combined_weight = 1.f;
+      for(int i = 0, wn = combined_weights_names.size(); i < wn; i++){
+        combined_weight *= weights[i]->c;
+        combined_weights_up.push_back( 1.f );
+        combined_weights_down.push_back( 1.f );
+        msg( combined_weights_names[i], weights[i]->c );
+      }
+
+      for(int i = 0, wn = combined_weights_names.size(); i < wn; i++){
+        for(int j = 0; j < wn; j++){
+          combined_weights_up[i]   *= weights[j]->c;
+          combined_weights_down[i] *= weights[j]->c;
+        }
+
+        combined_weights_up[i]   *= weights[i]->u / weights[i]->c;
+        combined_weights_down[i] *= weights[i]->d / weights[i]->c;
+      }
+    }
+
+    void Print(){
+      msg("Central weight", combined_weight);
+      for(int i = 0, wn = combined_weights_names.size(); i < wn; i++){
+        msg( combined_weights_names[i], " +- ", combined_weights_up[i], combined_weights_down[i] );
+      }
+    }
+
+    Float_t             combined_weight;
+    vector<Float_t>     combined_weights_up;
+    vector<Float_t>     combined_weights_down;
+    vector<std::string> combined_weights_names;
 
     Weight sf_photons, sf_electrons, sf_muons_id, sf_muons_iso;
     Weight sf_ljets_id, sf_ljets_btag;
     Weight sf_bjets_id, sf_bjets_btag;
+    Weight sf_pileup;
   };
 
   EventWeights calc_event_weight(const vector<Photon> & selected_photons, const vector<Electron> & selected_electrons, const vector<Muon> & selected_muons,
-                            const vector<Jet> & selected_ljets,  const vector<Jet> selected_bjets){
+                                 const vector<Jet> & selected_ljets,  const vector<Jet> & selected_bjets, const PileUpSFReader & pileup_sf_calculator){
     EventWeights ews;
     // apply photons SFs
     // ID+ISO
@@ -62,10 +99,18 @@ namespace hzura {
       ews.sf_bjets_btag.d *= obj.sf_btag.d * obj.eff_btag.d;
     }
 
-    // total
-    // Float_t weight = weight_photons * weight_electrons * weight_muons_id * weight_muons_iso;
+    // apply SFs from pileup NPV reweighting
+    int nPVs = 30;
+    if( not hzura::glob::is_data ) nPVs = hzura::glob::event->TrueMCNumInteractions;
+    pileup_sf_calculator.CalcSFs(nPVs, ews.sf_pileup.c, ews.sf_pileup.u, ews.sf_pileup.d);
+
+    // total and variations
+    ews.CombineWeights();
+
     return ews;
   }
+
+  // PileUP  ================================================================================================
 
   // PHOTONS ================================================================================================
   void calc_photon_iso(hzura::Photon * p){

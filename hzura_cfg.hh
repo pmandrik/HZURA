@@ -10,7 +10,19 @@ namespace hzura {
   
     bool is_data;
     std::string year_era;
+    int year;
     Events * event;
+
+    void Init(const string & era, Events * event){
+
+      hzura::glob::year_era = era;
+      hzura::glob::event = event;
+
+      if( year_era == "2016" ) year = 2016;
+      if( year_era == "2017" ) year = 2017;
+      if( year_era == "2018" ) year = 2018;
+      is_data = true;
+    }
 
   };
 
