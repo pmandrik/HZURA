@@ -300,7 +300,7 @@ namespace hzura {
     TGraph *puWgtGr, *puWgtDoGr, *puWgtUpGr;
   };
 
-  // definition of loaded data =-
+  //  definition of loaded data =-
   PileUpSFReader get_pileup_sf_reader(){
     PileUpSFReader answer;
     if(hzura::glob::year_era == "2016") answer.Init("data/pileup/puweights_2016.root");
@@ -309,6 +309,42 @@ namespace hzura {
     
     return answer;
   }
+
+  // Definition of JEC uncertanties ==--
+  class JecReader {
+    public:
+    std::map<std::string, JetCorrectionUncertainty*> uncertanties;
+  };
+
+  JecReader get_jec_uncertanties(){ // FIXME 2016 2017 2018
+    // https://twiki.cern.ch/twiki/bin/view/CMS/JECDataMC
+    std::vector<std::string> unc_names;
+    std::string unc_inp_file;
+    if(hzura::glob::year_era == "2016") {
+      unc_names = {"Total", "SubTotalMC", "SubTotalAbsolute", "SubTotalScale", "SubTotalPt", "SubTotalRelative", "SubTotalPileUp", "FlavorQCD", "TimePtEta"};
+      unc_inp_file = "data/JEC/Summer16_07Aug2017_V11_MC/Summer16_07Aug2017_V11_MC_UncertaintySources_AK4PF.txt";
+    }
+    if(hzura::glob::year_era == "2017") {
+      unc_names = {"Total", "SubTotalMC", "SubTotalAbsolute", "SubTotalScale", "SubTotalPt", "SubTotalRelative", "SubTotalPileUp", "FlavorQCD", "TimePtEta"};
+      unc_inp_file = "";
+    }
+    if(hzura::glob::year_era == "2018") {
+      unc_names = {"Total", "SubTotalMC", "SubTotalAbsolute", "SubTotalScale", "SubTotalPt", "SubTotalRelative", "SubTotalPileUp", "FlavorQCD", "TimePtEta"};
+      unc_inp_file = "";
+    }
+
+    msg("hzura::get_jec_uncertanties() ... ", unc_inp_file);
+    JecReader answer;
+    for(const std::string & unc_name : unc_names) {
+      JetCorrectorParameters     *p = new JetCorrectorParameters(unc_inp_file, unc_name);
+      JetCorrectionUncertainty *unc = new JetCorrectionUncertainty(*p);
+
+      answer.uncertanties[ unc_name ] = unc;
+    }
+
+    msg("hzura::get_jec_uncertanties() ... ok");
+    return answer;
+  };
 
 };
 

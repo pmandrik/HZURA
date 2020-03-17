@@ -241,6 +241,7 @@ namespace hzura {
   }
 
   // JETS ================================================================================================
+  // btags ==--
   void calc_btag_variables(hzura::Jet & j){ // FIXME 2016 2017 2018
     Events * e = hzura::glob::event;
     const int & i = j.index;
@@ -251,7 +252,7 @@ namespace hzura {
     // DeepCSV
     // jet.pfDeepCSVJetTags_probb    = j.bDiscriminator("pfDeepCSVJetTags:probb");
     // jet.pfDeepCSVJetTags_probbb   = j.bDiscriminator("pfDeepCSVJetTags:probbb");
-    // jet.pfDeepCSVJetTags_probc    = j.bDiscriminator("pfDeepCSVJetTags_probc");
+    // jet.pfDeepCSVJetTags_probc    = j.bDiscriminator("pfDeepCSVJetTags:probc");
     // jet.pfDeepCSVJetTags_probudsg = j.bDiscriminator("pfDeepCSVJetTags:probudsg");
 
     // pfDeepCSVJetTags:probb + pfDeepCSVJetTags:probbb 
@@ -261,9 +262,9 @@ namespace hzura {
     j.btag_DeepCSV_isTight  = (j.btag_DeepCSV_val > 0.7527) ? true : false;
 
     // DeepJet
-    // jet.pfDeepFlavourJetTags_probb    = j.bDiscriminator("pfDeepFlavourJetTags_probb");
-    // jet.pfDeepFlavourJetTags_probbb   = j.bDiscriminator("pfDeepFlavourJetTags_probbb");
-    // jet.pfDeepFlavourJetTags_problepb = j.bDiscriminator("pfDeepFlavourJetTags_problepb");
+    // jet.pfDeepFlavourJetTags_probb    = j.bDiscriminator("pfDeepFlavourJetTags:probb");
+    // jet.pfDeepFlavourJetTags_probbb   = j.bDiscriminator("pfDeepFlavourJetTags:probbb");
+    // jet.pfDeepFlavourJetTags_problepb = j.bDiscriminator("pfDeepFlavourJetTags:problepb");
     // jet.pfDeepFlavourJetTags_probc    = j.bDiscriminator("pfDeepFlavourJetTags:probc");
     // jet.pfDeepFlavourJetTags_probuds  = j.bDiscriminator("pfDeepFlavourJetTags:probuds");
     // jet.pfDeepFlavourJetTags_probg    = j.bDiscriminator("pfDeepFlavourJetTags:probg");
@@ -284,10 +285,19 @@ namespace hzura {
     j.sf_btag.d = btag_sf_calculator.GetSF("down", eta, pt); 
   };
 
-
-
-
-
+  // MET ==========================================================================================================
+  void set_met_filter_flag(hzura::MET & met_candidate){
+    met_candidate.filter_flag = true;
+    met_candidate.filter_flag = met_candidate.filter_flag && hzura::glob::event->Flag_goodVertices;
+    met_candidate.filter_flag = met_candidate.filter_flag && hzura::glob::event->Flag_globalSuperTightHalo2016Filter;
+    met_candidate.filter_flag = met_candidate.filter_flag && hzura::glob::event->Flag_HBHENoiseFilter;
+    met_candidate.filter_flag = met_candidate.filter_flag && hzura::glob::event->Flag_HBHENoiseIsoFilter;
+    met_candidate.filter_flag = met_candidate.filter_flag && hzura::glob::event->Flag_EcalDeadCellTriggerPrimitiveFilter;
+    met_candidate.filter_flag = met_candidate.filter_flag && hzura::glob::event->Flag_BadPFMuonFilter;
+    met_candidate.filter_flag = met_candidate.filter_flag && hzura::glob::event->Flag_BadChargedCandidateFilter;
+    met_candidate.filter_flag = met_candidate.filter_flag && hzura::glob::event->Flag_eeBadScFilter;
+    met_candidate.filter_flag = met_candidate.filter_flag && hzura::glob::event->Flag_ecalBadCalibReducedMINIAODFilter;
+  }
 
 };
 

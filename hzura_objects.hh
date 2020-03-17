@@ -114,8 +114,11 @@ namespace hzura {
       pt_unc_v_d      = hzura::glob::event->pt_unc_v_d;      
       phi_unc_v_u     = hzura::glob::event->phi_unc_v_u;
       phi_unc_v_d     = hzura::glob::event->phi_unc_v_d;
+
+      filter_flag = false;
     }
 
+    Bool_t          filter_flag;
     Float_t         pt, eta, phi;
     Float_t         gen_pt, gen_phi;
     Float_t         significance;

@@ -5,9 +5,11 @@
 wdir=`pwd`
 
 ### src files =================
+cd external
 wget --no-check-certificate -N --content-disposition https://raw.githubusercontent.com/pmandrik/PMANDRIK_LIBRARY/master/pmlib_msg.hh
 wget --no-check-certificate -N --content-disposition https://raw.githubusercontent.com/cms-sw/cmssw/CMSSW_10_0_X/CondTools/BTau/test/BTagCalibrationStandalone.h
-wget --no-check-certificate -N --content-disposition https://raw.githubusercontent.com/cms-sw/cmssw/CMSSW_10_0_X/CondTools/BTau/test/BTagCalibrationStandalone.cpp
+wget --no-check-certificate -N --content-disposition https://raw.githubusercontent.com/cms-sw/cmssw/CMSSW_10_0_X/CondTools/BTau/test/BTagCalibrationStandalone.cpp 
+cd $wdir
 
 #wget --no-check-certificate -N --content-disposition https://lathomas.web.cern.ch/lathomas/METStuff/XYCorrections/XYMETCorrection.h
 

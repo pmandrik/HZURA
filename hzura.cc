@@ -1,14 +1,25 @@
 
 // extra libraries
-#include "pmlib_msg.hh"
+#include "external/pmlib_msg.hh"
 using namespace pmlib;
 
 // external libraries 
 // https://twiki.cern.ch/twiki/bin/view/CMS/BTagCalibration#Standalone
-#include "BTagCalibrationStandalone.h"
-#include "BTagCalibrationStandalone.cpp"
+#include "external/BTagCalibrationStandalone.h"
+#include "external/BTagCalibrationStandalone.cpp"
 // https://twiki.cern.ch/twiki/bin/viewauth/CMS/MissingETRun2Corrections#xy_Shift_Correction_MET_phi_modu
-#include "XYMETCorrection.h"
+#include "external/XYMETCorrection.h"
+// JEC
+// https://github.com/cms-sw/cmssw/tree/CMSSW_11_1_0_pre2/CondFormats/JetMETObjects/src
+// https://raw.githubusercontent.com/cms-sw/cmssw/CMSSW_11_1_0_pre2/CondFormats/JetMETObjects/interface/JetCorrectorParameters.h
+// https://raw.githubusercontent.com/cms-sw/cmssw/CMSSW_11_1_0_pre2/CondFormats/JetMETObjects/interface/JetCorrectionUncertainty.h
+// https://raw.githubusercontent.com/cms-sw/cmssw/CMSSW_11_1_0_pre2/CondFormats/JetMETObjects/src/JetCorrectorParameters.cc
+// https://raw.githubusercontent.com/cms-sw/cmssw/CMSSW_11_1_0_pre2/CondFormats/JetMETObjects/src/JetCorrectionUncertainty.cc
+// https://twiki.cern.ch/twiki/bin/view/CMS/JECUncertaintySources
+// https://github.com/andrey-popov/mensura/tree/d9cf55dc809b1eef89d2d7bb79d0d3b15b6feee0/src/external/JERC
+#include "external/JERC/SimpleJetCorrectionUncertainty.cpp"
+#include "external/JERC/JetCorrectionUncertainty.cpp"
+#include "external/JERC/JetCorrectorParameters.cpp"
 
 // hzura
 #include "hzura_cfg.hh"
@@ -63,6 +74,7 @@ int main(int argc, char *argv[]) { // FIXME
   SFCalculator photon_sf_calculator  = get_photons_sf_reader();
   BTagSFReader btag_sf_calculator_b = get_btag_sf_reader("tight", "b");
   PileUpSFReader pileup_sf_calculator = get_pileup_sf_reader();
+  JecReader jec_unc_calculator        = get_jec_uncertanties();
 
   MSG_INFO("hzura::main(): process input file", input_file);
 
@@ -263,6 +275,11 @@ int main(int argc, char *argv[]) { // FIXME
     // met =-
     // https://twiki.cern.ch/twiki/bin/viewauth/CMS/MissingETRun2Corrections#xy_Shift_Correction_MET_phi_modu
     met_candidate.Init();
+    set_met_filter_flag( met_candidate ); // FIXME filter events based on met filters if met is used
+    // TODO MET uncertanties
+    // TODO JEC MET propogation + 
+    // TODO correction of met after propogation
+    // TODO JET Uncertanties
 
     // METXYCorr_Met_MetPhi(double uncormet, double uncormet_phi, int runnb, int year, bool isMC, int npv)
     std::pair<double,double> corr_pt_phi = METXYCorr_Met_MetPhi( met_candidate.pt, met_candidate.phi, hzura::glob::event->run, hzura::glob::year, hzura::glob::is_data, hzura::glob::event->RecoNumInteractions );
