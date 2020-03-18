@@ -12,6 +12,7 @@ namespace hzura {
     std::string year_era;
     int year;
     Events * event;
+    TRandom3 randGen;
 
     void Init(const string & era, Events * event){
 

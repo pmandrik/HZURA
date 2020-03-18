@@ -288,12 +288,21 @@ int main(int argc, char *argv[]) { // FIXME
     //met_candidate.corr_phi = corr_pt_phi.second;
     msg("met pt,phi", corr_pt_phi.first, corr_pt_phi.second, "<-", met_candidate.pt, met_candidate.phi);
 
-    // remake jets due to JEC
+    // Evaluate JER smearing after nominal JEC is applied but before systematic variaion in JEC - only for MC
+    msg("Before JER smearing:");
+    for( auto jet : jet_candidates )
+      msg( jet.tlv.Pt() );
+    for( auto jet : jet_candidates )
+      apply_jer_smearing( jet );
+    msg("After JER smearing:");
+    for( auto jet : jet_candidates )
+      msg( jet.tlv.Pt() );
+
+    // remake jets due to JEC systematic variaion
     msg("Before JEC Unc:");
     for( auto jet : jet_candidates )
       msg( jet.tlv.Pt() );
     jec_unc_calculator.RemakeJets( jet_candidates, "Total", true );
-
     msg("After JEC Unc:");
     for( auto jet : jet_candidates )
       msg( jet.tlv.Pt() );

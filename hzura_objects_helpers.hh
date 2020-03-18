@@ -285,6 +285,29 @@ namespace hzura {
     j.sf_btag.d = btag_sf_calculator.GetSF("down", eta, pt); 
   };
 
+  // Evaluate JER smearing after nominal JEC is applied but before systematic variaion in JEC
+  // https://twiki.cern.ch/twiki/bin/view/CMS/JetResolution#Smearing_procedures
+  // https://twiki.cern.ch/twiki/bin/view/CMS/JetResolution?rev=54#Smearing_procedures
+  void apply_jer_smearing(hzura::Jet & j, const string & type = ""){
+    const int & i = j.index;
+    Float_t cjer = 1.f;
+    Float_t sjet = hzura::glob::event->Jets_sf[i];
+    if( type == "up")   hzura::glob::event->Jets_sf_u[i];
+    if( type == "down") hzura::glob::event->Jets_sf_d[i];
+
+    Float_t getJet_pt = hzura::glob::event->Jets_getJet_pt[i];
+    if(getJet_pt > 0)
+      cjer = 1.f + sjet * ( j.tlv.Pt() - getJet_pt ) / j.tlv.Pt();
+    else 
+      cjer = 1.f + hzura::glob::randGen.Gaus(0., hzura::glob::event->Jets_resolution[i] ) * std::sqrt(std::max(std::pow(sjet, 2) - 1., 0.));;
+
+    if( cjer < 0 ){
+      msg( "hzura::apply_jer_smearing(): negative cJER factor", cjer, getJet_pt, sjet * ( j.tlv.Pt() - getJet_pt ) / j.tlv.Pt(), hzura::glob::event->Jets_resolution[i] );
+      cjer = 0;
+    }
+    j.tlv *= cjer;
+  };
+
   // MET ==========================================================================================================
   void set_met_filter_flag(hzura::MET & met_candidate){
     met_candidate.filter_flag = true;
