@@ -25,6 +25,7 @@ using namespace pmlib;
 #include "hzura_cfg.hh"
 #include <hzura_objects.hh>
 #include <hzura_analyses_helpers.hh>
+#include <hzura_analyse_configuration_interfaces.hh>
 #include <hzura_analyse_configuration_helpers.hh>
 #include <hzura_objects_helpers.hh>
 using namespace hzura;
