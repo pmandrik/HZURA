@@ -269,7 +269,7 @@ int main(int argc, char *argv[]) { // FIXME
     }
 
     // PrimaryVertexes =-
-    // Pile-up reweight using
+    // Pile-up reweight using TODO
     // https://github.com/pfs/BJetEnergyPeak/blob/master/scripts/runPileupEstimation.py
 
     // met =-
@@ -286,6 +286,16 @@ int main(int argc, char *argv[]) { // FIXME
     //met_candidate.corr_pt  = corr_pt_phi.first;
     //met_candidate.corr_phi = corr_pt_phi.second;
     msg("met pt,phi", corr_pt_phi.first, corr_pt_phi.second, "<-", met_candidate.pt, met_candidate.phi);
+
+    // remake jets due to JEC
+    msg("Before JEC Unc:");
+    for( auto jet : jet_candidates )
+      msg( jet.tlv.Pt() );
+    jec_unc_calculator.RemakeJets( jet_candidates, "Total", true );
+
+    msg("After JEC Unc:");
+    for( auto jet : jet_candidates )
+      msg( jet.tlv.Pt() );
 
     // 2.5 make some control plots ====================================================================================
     // check if ISO is used in ID criteria

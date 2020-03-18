@@ -314,6 +314,34 @@ namespace hzura {
   class JecReader {
     public:
     std::map<std::string, JetCorrectionUncertainty*> uncertanties;
+
+    void RemakeJets(vector<hzura::Jet> & jet_candidates, const std::string & unc_name, bool up=true){
+      auto it = uncertanties.find( unc_name );
+      if(it == uncertanties.end()){
+        msg_err("hzura::JecReader.RemakeJets: can't find JEC uncertantie with name:", unc_name, ", available uncertanties are:");
+        for(it = uncertanties.begin(); it != uncertanties.end(); ++it){
+          msg_err(" ", it->first);
+        }
+        return;
+      }
+
+      // https://twiki.cern.ch/twiki/bin/view/CMS/JECUncertaintySources
+      JetCorrectionUncertainty *unc = it->second;
+      if( up ){
+        for(hzura::Jet & jet : jet_candidates){
+          unc->setJetPt( jet.tlv.Pt() );
+          unc->setJetEta( jet.tlv.Eta() );
+          jet.tlv *= (1. + unc->getUncertainty( up )); 
+        }
+      } else { 
+        for(hzura::Jet & jet : jet_candidates){
+          unc->setJetPt( jet.tlv.Pt() );
+          unc->setJetEta( jet.tlv.Eta() );
+          jet.tlv *= (1. - unc->getUncertainty( up )); 
+        }
+      }
+      
+    }
   };
 
   JecReader get_jec_uncertanties(){ // FIXME 2016 2017 2018
