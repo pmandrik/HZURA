@@ -162,19 +162,19 @@ namespace hzura {
   }
 
   template<class T> // hzura::Electron, hzura::Photon
-  void set_egamma_sfs(T & egamma, SFCalculator & sf_calculator, const string & sf_type){
+  void set_egamma_sfs(T & egamma, SFCalculator & sf_calculator, const int & sf_type){
     const Double_t & eta = egamma.tlv.Eta();
     const Double_t & pt  = egamma.tlv.Pt();
 
     vector<Float_t *> valse = { & egamma.sf.c, & egamma.sf.u, & egamma.sf.d };
     vector<int> unc_vals = {0, 1, -1};
-    if( sf_type == "loose" )
+    if( sf_type == hzura::id_names::loose )
       for(int i = 0; i < valse.size(); i++)
         *( valse[i] ) = sf_calculator.GetSF_loose(eta, pt, unc_vals[i]);
-    else if( sf_type == "medium" )
+    else if( sf_type == hzura::id_names::medium )
       for(int i = 0; i < valse.size(); i++)
         *( valse[i] ) = sf_calculator.GetSF_medium(eta, pt, unc_vals[i]);
-    else if( sf_type == "tight" )
+    else if( sf_type == hzura::id_names::tight )
       for(int i = 0; i < valse.size(); i++) 
         *( valse[i] ) = sf_calculator.GetSF_tight(eta, pt, unc_vals[i]);
   }
@@ -213,16 +213,16 @@ namespace hzura {
     const int & index = muon.index;
     Float_t iso = hzura::glob::event->Muons_relIsoPF[ index ];
 
-    if( iso < 0.25 ) muon.isLooseISO = true;  else return;
+    if( iso < 0.25 ) muon.isLooseISO  = true; else return;
     if( iso < 0.20 ) muon.isMediumISO = true; else return;
-    if( iso < 0.15 ) muon.isTightISO = true;  else return;
+    if( iso < 0.15 ) muon.isTightISO  = true; else return;
   }
 
-  void set_muon_sfs(hzura::Muon & muon, SFCalculator & muon_sf_calculator, const string & sf_type){
+  void set_muon_sfs(hzura::Muon & muon, SFCalculator & muon_sf_calculator, const int & sf_type){
     const Double_t & eta = muon.tlv.Eta();
     const Double_t & pt  = muon.tlv.Pt();
 
-    if( sf_type == "loose" ){
+    if( sf_type == id_names::loose ){
       muon.sf_id.c   = muon_sf_calculator.GetSF_id_loose(  eta, pt,  0 );
       muon.sf_id.u   = muon_sf_calculator.GetSF_id_loose(  eta, pt,  1 );
       muon.sf_id.d   = muon_sf_calculator.GetSF_id_loose(  eta, pt, -1 );
@@ -230,7 +230,7 @@ namespace hzura {
       muon.sf_iso.u  = muon_sf_calculator.GetSF_iso_loose(  eta, pt,  1 );
       muon.sf_iso.d  = muon_sf_calculator.GetSF_iso_loose(  eta, pt, -1 );
     } else 
-    if( sf_type == "tight" ){
+    if( sf_type == id_names::tight ){
       muon.sf_id.c   = muon_sf_calculator.GetSF_id_tight(  eta, pt,  0 );
       muon.sf_id.u   = muon_sf_calculator.GetSF_id_tight(  eta, pt,  1 );
       muon.sf_id.d   = muon_sf_calculator.GetSF_id_tight(  eta, pt, -1 );
@@ -320,6 +320,22 @@ namespace hzura {
     met_candidate.filter_flag = met_candidate.filter_flag && hzura::glob::event->Flag_BadChargedCandidateFilter;
     met_candidate.filter_flag = met_candidate.filter_flag && hzura::glob::event->Flag_eeBadScFilter;
     met_candidate.filter_flag = met_candidate.filter_flag && hzura::glob::event->Flag_ecalBadCalibReducedMINIAODFilter;
+  }
+
+  // calculate MET variation due to systematic uncertanties in JEC, JER and Unclastered energy 
+  // { Var::JetEnUp, Var::JetEnDown, Var::JetResUp, Var::JetResDown, Var::UnclusteredEnUp, Var::UnclusteredEnDown }
+  void apply_met_systematic_variation(hzura::MET & met_candidate, const string & type = "" ){
+      int index = -1;
+           if( type == "JetEnUp" )           index = 0;
+      else if( type == "JetEnDown" )         index = 1;
+      else if( type == "JetResUp" )          index = 2;
+      else if( type == "JetResDown" )        index = 3;
+      else if( type == "UnclusteredEnUp" )   index = 4;
+      else if( type == "UnclusteredEnDown" ) index = 5;
+      if(index < 0) return;
+
+      met_candidate.pt  = hzura::glob::event->pt_unc_v[ index ];
+      met_candidate.phi = hzura::glob::event->phi_unc_v[ index ];
   }
 
 };

@@ -11,6 +11,7 @@ namespace hzura {
   // https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation102X
   class BTagSFReader{
     public:
+      BTagSFReader(){};
       BTagSFReader(const std::string & working_point_, const std::string & jet_flavour_){
         working_point = working_point_;
         jet_flavour   = jet_flavour_;
@@ -210,19 +211,45 @@ namespace hzura {
   class JecReader {
     public:
     std::map<std::string, JetCorrectionUncertainty*> uncertanties;
+    JetCorrectionUncertainty * active_unc;
 
-    void RemakeJets(vector<hzura::Jet> & jet_candidates, const std::string & unc_name, bool up=true){
+    JetCorrectionUncertainty * GetJetCorrectionUncertainty(const std::string & unc_name){
       auto it = uncertanties.find( unc_name );
       if(it == uncertanties.end()){
-        msg_err("hzura::JecReader.RemakeJets: can't find JEC uncertantie with name:", unc_name, ", available uncertanties are:");
+        msg_err("hzura::JecReader.GetJetCorrectionUncertainty: can't find JEC uncertantie with name:", unc_name, ", available uncertanties are:");
         for(it = uncertanties.begin(); it != uncertanties.end(); ++it){
           msg_err(" ", it->first);
         }
-        return;
+        return nullptr;
       }
 
       // https://twiki.cern.ch/twiki/bin/view/CMS/JECUncertaintySources
-      JetCorrectionUncertainty *unc = it->second;
+      return it->second;
+    }
+
+    void SetActiveJetCorrectionUncertainty( const std::string & unc_name ){
+      if( not unc_name.size() ){
+        active_unc = nullptr;
+        return;
+      }
+      active_unc = GetJetCorrectionUncertainty( unc_name );
+    }
+
+    void RemakeJet(hzura::Jet & jet, bool up=true){
+      if(not active_unc) return;
+      if( up ){
+        active_unc->setJetPt( jet.tlv.Pt() );
+        active_unc->setJetEta( jet.tlv.Eta() );
+        jet.tlv *= (1. + active_unc->getUncertainty( up )); 
+      } else { 
+        active_unc->setJetPt( jet.tlv.Pt() );
+        active_unc->setJetEta( jet.tlv.Eta() );
+        jet.tlv *= (1. - active_unc->getUncertainty( up )); 
+      }
+    }
+
+    void RemakeJets(vector<hzura::Jet> & jet_candidates, const std::string & unc_name, bool up=true){
+      JetCorrectionUncertainty *unc = GetJetCorrectionUncertainty( unc_name );
       if( up ){
         for(hzura::Jet & jet : jet_candidates){
           unc->setJetPt( jet.tlv.Pt() );

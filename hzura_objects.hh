@@ -110,10 +110,6 @@ namespace hzura {
       gen_pt          = hzura::glob::event->gen_pt;
       gen_phi         = hzura::glob::event->gen_phi;
       significance    = hzura::glob::event->significance;
-      pt_unc_v_u      = hzura::glob::event->pt_unc_v_u;
-      pt_unc_v_d      = hzura::glob::event->pt_unc_v_d;      
-      phi_unc_v_u     = hzura::glob::event->phi_unc_v_u;
-      phi_unc_v_d     = hzura::glob::event->phi_unc_v_d;
 
       filter_flag = false;
     }
@@ -122,10 +118,34 @@ namespace hzura {
     Float_t         pt, eta, phi;
     Float_t         gen_pt, gen_phi;
     Float_t         significance;
-    vector<float>   pt_unc_v_u, pt_unc_v_d, phi_unc_v_u, phi_unc_v_d;
   };
 
+  class HzuraEvent {
+    public:
+      HzuraEvent (){
+        photon_candidates = nullptr;
+        electron_candidates = nullptr;
+        muon_candidates = nullptr;
+        ljet_candidates = nullptr;
+        bjet_candidates = nullptr;
+      }
 
+      ~HzuraEvent(){
+        delete photon_candidates ;
+        delete electron_candidates ;
+        delete muon_candidates ;
+        delete ljet_candidates ;
+        delete bjet_candidates ;
+      }
+
+      std::vector<hzura::Photon>   * photon_candidates;
+      std::vector<hzura::Electron> * electron_candidates;
+      std::vector<hzura::Muon>     * muon_candidates;
+      std::vector<hzura::Jet>      * ljet_candidates;
+      std::vector<hzura::Jet>      * bjet_candidates;
+
+      hzura::MET met;
+  };
 };
 
 #endif

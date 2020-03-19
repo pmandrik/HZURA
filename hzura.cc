@@ -28,6 +28,7 @@ using namespace pmlib;
 #include <hzura_analyse_configuration_interfaces.hh>
 #include <hzura_analyse_configuration_helpers.hh>
 #include <hzura_objects_helpers.hh>
+#include <hzura_objects_preselectors.hh>
 using namespace hzura;
 
 // GRIDNER interface
@@ -69,13 +70,7 @@ int main(int argc, char *argv[]) { // FIXME
 
   int verbose_lvl = pmlib::verbose::VERBOSE;
   hzura::glob::Init( "2016", nullptr );
-
-  SFCalculator muon_sf_calculator = get_muons_sf_reader();
-  SFCalculator electron_sf_calculator = get_electrons_sf_reader();
-  SFCalculator photon_sf_calculator  = get_photons_sf_reader();
-  BTagSFReader btag_sf_calculator_b = get_btag_sf_reader("tight", "b");
-  PileUpSFReader pileup_sf_calculator = get_pileup_sf_reader();
-  JecReader jec_unc_calculator        = get_jec_uncertanties();
+  hzura::ObjectPreselector preselector;
 
   MSG_INFO("hzura::main(): process input file", input_file);
 
@@ -128,7 +123,7 @@ int main(int argc, char *argv[]) { // FIXME
   TH1D * h_mue_SC_pairs_m  = new TH1D("h_mue_SC_pairs_m",  "h_mue_SC_pairs_m",  100, 0, 300);
   TH1D * h_mue_DC_pairs_m  = new TH1D("h_mue_DC_pairs_m",  "h_mue_DC_pairs_m",  100, 0, 300);
 
-  // -1. run options
+  // -1. set run options ================================================================================================
   // https://arxiv.org/pdf/1804.02716.pdf
   Float_t Photons_pt_cut  = 20;
   Float_t Photons_eta_hole_cut_start = 1.44;
@@ -150,7 +145,11 @@ int main(int argc, char *argv[]) { // FIXME
   Float_t Jet_pt_cut  = 20;
   Float_t Jet_eta_cut = 3;
 
-  // 0. read events
+  // TODO
+  EventCfg cfg = EventCfg();
+  std::vector<hzura::EventCfg> analyses_configs = { cfg };
+
+  // 0. read events ================================================================================================
   Reader * reader = new Reader( input_file );
   Events * event     = reader->event;
   hzura::glob::event = event;
@@ -158,13 +157,11 @@ int main(int argc, char *argv[]) { // FIXME
   Long64_t entrys = hzura::glob::event->fChain->GetEntriesFast();
   Long64_t entry = 0;
 
-  vector<hzura::Photon>   photon_candidates;
   vector<hzura::Electron> electron_candidates;
   vector<hzura::Muon>     muon_candidates;
   vector<hzura::Jet>      jet_candidates;
   vector<hzura::Jet>      bjet_candidates;
 
-  hzura::Photon   photon_candidate;
   hzura::Electron electron_candidate;
   hzura::Muon     muon_candidate;
   hzura::Jet      jet_candidate;
@@ -180,132 +177,16 @@ int main(int argc, char *argv[]) { // FIXME
       pmlib::msg_progress( float(entry)/entrys );
 
     // 0. remove info from previous event
-    photon_candidates.clear();
-    electron_candidates.clear();
-    muon_candidates.clear();
-    jet_candidates.clear();
-    bjet_candidates.clear();
+    vector<hzura::HzuraEvent> hzura_events = preselector.get_events_from_cfgs( analyses_configs );
+    const hzura::HzuraEvent & hzura_event  = hzura_events[0];
 
+    /*
     // 1. make some control plots
     // msg("Event ... ");
     // for(int i = 0; i < event->trigger_fires.size(); i++) msg( "trigger", i, event->trigger_fires[i] );
 
     // OBJECT SELECTIONS ==============================================
     // 2. apply basic cuts on events
-
-    // photons =-
-    for(int i = 0; i < event->Photons_; i++){
-      photon_candidate.Init( i );
-      apply_energy_correction( photon_candidate, "ecalEnergyPostCorr" );
-      TLorentzVector & vec = photon_candidate.tlv;
-
-      if( vec.Pt() < Photons_pt_cut ) continue;
-      if( TMath::Abs( vec.Eta() ) > Photons_eta_cut ) continue;
-      if( TMath::Abs( vec.Eta() ) > Photons_eta_hole_cut_start and TMath::Abs( vec.Eta() ) < Photons_eta_hole_cut_end ) continue;
-      if( not event->Photons_isLoose[i] ) continue;
-
-      set_egamma_sfs( photon_candidate, photon_sf_calculator, "loose" );
-      msg( "photons sf", photon_candidate.sf.c, photon_candidate.sf.u, photon_candidate.sf.d );
-
-      photon_candidates.emplace_back( photon_candidate );
-    }
-
-    // electrons =-
-    for(int i = 0; i < event->Electrons_; i++){
-      electron_candidate.Init( i );
-      apply_energy_correction( electron_candidate, "ecalTrkEnergyPostCorr" );
-      TLorentzVector & vec = electron_candidate.tlv;
-
-      if( vec.Pt() < Electron_pt_cut ) continue;
-      if( TMath::Abs( vec.Eta() ) > Electron_eta_cut ) continue;
-      if( TMath::Abs( vec.Eta() ) > Electron_eta_hole_cut_start and TMath::Abs( vec.Eta() ) < Electron_eta_hole_cut_end ) continue;
-      if( not event->Electrons_isLoose[i] ) continue;
-
-      set_egamma_sfs( electron_candidate, electron_sf_calculator, "loose" );
-      msg( "electrons sf", electron_candidate.sf.c, electron_candidate.sf.u, electron_candidate.sf.d );
-
-      electron_candidates.emplace_back( electron_candidate );
-
-      // TODO ISO cuts for electrons ???
-    }
-
-    // muons =-
-    for(int i = 0; i < event->Muons_; i++){
-      if( event->Muons_pt[i] < Muon_pt_cut ) continue;
-      if( TMath::Abs( event->Muons_eta[i] ) > Muon_eta_cut ) continue;
-      if( not event->Muons_isLoose[i] ) continue;
-
-      muon_candidate.Init( i );
-      calc_muon_iso( muon_candidate );
-      if( not muon_candidate.isLooseISO ) continue;
-
-      set_muon_sfs( muon_candidate, muon_sf_calculator, "loose" );
-
-      // msg( "muons", i, "/", event->Muons_, hzura::glob::event->Muons_relIsoPF[ i ], hzura::glob::event->Muons_relIsoTrk[ i ], muon_candidate.isLooseISO, muon_candidate.isMediumISO, muon_candidate.isTightISO );
-      // msg( "muon sf id", muon_candidate.sf_id, muon_candidate.sf_id_up, muon_candidate.sf_id_down);
-      // msg( "muon sf iso", muon_candidate.sf_iso, muon_candidate.sf_iso_up, muon_candidate.sf_iso_down);
-
-      muon_candidates.emplace_back( muon_candidate );
-    }
-
-    // jets =-
-    for(int i = 0; i < event->Jets_; i++){
-      if( event->Jets_pt[i] < Jet_pt_cut ) continue;
-      if( TMath::Abs( event->Jets_eta[i] ) > Jet_eta_cut ) continue;
-      if( not event->Jets_isTight[i] ) continue;
-
-      jet_candidate.Init( i );
-
-      hzura::calc_btag_variables( jet_candidate );
-      hzura::set_jet_btag_sfs( jet_candidate, btag_sf_calculator_b );
-
-      msg("jets btag SFs", jet_candidate.sf_btag.c, jet_candidate.sf_btag.u, jet_candidate.sf_btag.d);
-
-      if( jet_candidate.btag_DeepCSV_isTight ){
-        bjet_candidates.emplace_back( jet_candidate );
-      }
-      else{
-        jet_candidates.emplace_back( jet_candidate );
-      }
-    }
-
-    // PrimaryVertexes =-
-    // Pile-up reweight using TODO
-    // https://github.com/pfs/BJetEnergyPeak/blob/master/scripts/runPileupEstimation.py
-
-    // met =-
-    // https://twiki.cern.ch/twiki/bin/viewauth/CMS/MissingETRun2Corrections#xy_Shift_Correction_MET_phi_modu
-    met_candidate.Init();
-    set_met_filter_flag( met_candidate ); // FIXME filter events based on met filters if met is used
-    // TODO MET uncertanties
-    // TODO JEC MET propogation + 
-    // TODO correction of met after propogation
-    // TODO JET Uncertanties
-
-    // METXYCorr_Met_MetPhi(double uncormet, double uncormet_phi, int runnb, int year, bool isMC, int npv)
-    std::pair<double,double> corr_pt_phi = METXYCorr_Met_MetPhi( met_candidate.pt, met_candidate.phi, hzura::glob::event->run, hzura::glob::year, hzura::glob::is_data, hzura::glob::event->RecoNumInteractions );
-    //met_candidate.corr_pt  = corr_pt_phi.first;
-    //met_candidate.corr_phi = corr_pt_phi.second;
-    msg("met pt,phi", corr_pt_phi.first, corr_pt_phi.second, "<-", met_candidate.pt, met_candidate.phi);
-
-    // Evaluate JER smearing after nominal JEC is applied but before systematic variaion in JEC - only for MC
-    msg("Before JER smearing:");
-    for( auto jet : jet_candidates )
-      msg( jet.tlv.Pt() );
-    for( auto jet : jet_candidates )
-      apply_jer_smearing( jet );
-    msg("After JER smearing:");
-    for( auto jet : jet_candidates )
-      msg( jet.tlv.Pt() );
-
-    // remake jets due to JEC systematic variaion
-    msg("Before JEC Unc:");
-    for( auto jet : jet_candidates )
-      msg( jet.tlv.Pt() );
-    jec_unc_calculator.RemakeJets( jet_candidates, "Total", true );
-    msg("After JEC Unc:");
-    for( auto jet : jet_candidates )
-      msg( jet.tlv.Pt() );
 
     // 2.5 make some control plots ====================================================================================
     // check if ISO is used in ID criteria
@@ -381,7 +262,7 @@ int main(int argc, char *argv[]) { // FIXME
     vector<Particle> muon_pairs_DC;
     make_diffCharge_combinations( muon_candidates, muon_pairs_DC );
 
-    for(auto p : muon_pairs) h_muon_pairs_m->Fill( p.tlv.M() );
+    for(auto p : muon_pairs)    h_muon_pairs_m->Fill( p.tlv.M() );
     for(auto p : muon_pairs_SC) h_muon_SC_pairs_m->Fill( p.tlv.M() );
     for(auto p : muon_pairs_DC) h_muon_DC_pairs_m->Fill( p.tlv.M() );
 
@@ -441,9 +322,10 @@ int main(int argc, char *argv[]) { // FIXME
     auto selected_muons     = muon_candidates;
     auto selected_ljets     = jet_candidates;
     auto selected_bjets     = bjet_candidates;
-    auto wgt = calc_event_weight( selected_photons, selected_electrons, selected_muons, selected_ljets,  selected_bjets, pileup_sf_calculator);
+    auto wgt = calc_event_weight(selected_photons, selected_electrons, selected_muons, selected_ljets,  selected_bjets, pileup_sf_calculator);
 
     wgt.Print();
+    */
   }
 
   file_out->cd();
