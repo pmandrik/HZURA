@@ -30,19 +30,22 @@ namespace hzura {
       void AddFile(const std::string tagger_name, const std::string file){
         // https://twiki.cern.ch/twiki/bin/view/CMS/BTagCalibration#Standalone
         msg("hzura::BTagSFReader.AddFile(): loading ", tagger_name, " from ", file);
-        BTagCalibration calib(tagger_name.c_str(), file.c_str());
+        calib = BTagCalibration(tagger_name.c_str(), file.c_str());
         msg("hzura::BTagSFReader.AddFile(): ...");
         reader.load(calib, jf, "comb");
         msg("hzura::BTagSFReader.AddFile(): ... ok");
       }
 
       Float_t GetSF(const std::string type, const Float_t & eta, const Float_t & pt) const {
+        // msg( "hzura::BTagSFReader.GetSF(", type, eta, pt, ") ... "  );
         return reader.eval_auto_bounds(type, jf, eta, pt);
       }
     
       BTagEntry::OperatingPoint wp;
       BTagEntry::JetFlavor jf;
       std::string working_point, jet_flavour;
+
+      BTagCalibration calib;
       BTagCalibrationReader reader;
   };
 

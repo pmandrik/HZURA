@@ -122,27 +122,15 @@ namespace hzura {
 
   class HzuraEvent {
     public:
-      HzuraEvent (){
-        photon_candidates = nullptr;
-        electron_candidates = nullptr;
-        muon_candidates = nullptr;
-        ljet_candidates = nullptr;
-        bjet_candidates = nullptr;
-      }
+      HzuraEvent (){ }
 
-      ~HzuraEvent(){
-        delete photon_candidates ;
-        delete electron_candidates ;
-        delete muon_candidates ;
-        delete ljet_candidates ;
-        delete bjet_candidates ;
-      }
+      ~HzuraEvent(){}
 
-      std::vector<hzura::Photon>   * photon_candidates;
-      std::vector<hzura::Electron> * electron_candidates;
-      std::vector<hzura::Muon>     * muon_candidates;
-      std::vector<hzura::Jet>      * ljet_candidates;
-      std::vector<hzura::Jet>      * bjet_candidates;
+      std::shared_ptr< std::vector<hzura::Photon>   > photon_candidates;
+      std::shared_ptr< std::vector<hzura::Electron> > electron_candidates;
+      std::shared_ptr< std::vector<hzura::Muon>     > muon_candidates;
+      std::shared_ptr< std::vector<hzura::Jet>      > ljet_candidates;
+      std::shared_ptr< std::vector<hzura::Jet>      > bjet_candidates;
 
       hzura::MET met;
   };

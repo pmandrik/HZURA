@@ -8,14 +8,14 @@ namespace hzura {
   class ObjectPreselector {
     public:
     ObjectPreselector(){
-      SFCalculator muon_sf_calculator     = get_muons_sf_reader();
-      SFCalculator electron_sf_calculator = get_electrons_sf_reader();
-      SFCalculator photon_sf_calculator   = get_photons_sf_reader();
-      BTagSFReader btag_sf_calculator_b   = get_btag_sf_reader("tight", "b");
-      PileUpSFReader pileup_sf_calculator = get_pileup_sf_reader();
-      JecReader jec_unc_calculator        = get_jec_uncertanties();
+      muon_sf_calculator     = get_muons_sf_reader();
+      electron_sf_calculator = get_electrons_sf_reader();
+      photon_sf_calculator   = get_photons_sf_reader();
+      btag_sf_calculator_b   = get_btag_sf_reader("tight", "b");
+      pileup_sf_calculator = get_pileup_sf_reader();
+      jec_unc_calculator   = get_jec_uncertanties();
 
-      event = hzura::glob::event;
+      verbose_lvl = 5; // FIXME
     }
 
     SFCalculator muon_sf_calculator     ;
@@ -25,17 +25,21 @@ namespace hzura {
     PileUpSFReader pileup_sf_calculator ;
     JecReader jec_unc_calculator        ;
     Events * event;
+    int verbose_lvl;
 
 
     // photons ================================================================================================
-    std::vector<hzura::Photon> * preselect_photons( const hzura::EventCfg & cfg ){
+    std::shared_ptr< std::vector<hzura::Photon> > preselect_photons( const hzura::EventCfg & cfg ){
+      MSG_DEBUG("hzura::ObjectPreselector.preselect_photons():  ... ");
       // cfg.PHOTON_ENERGY_CORRECTION_TYPE
       // cfg.PHOTON_PT_CUT
       // cfg.PHOTON_ETA_CUT
       // cfg.PHOTON_ETA_HOLE_CUT_START
       // cfg.PHOTON_ETA_HOLE_CUT_END
       // cfg.PHOTON_ID_CUT
-      std::vector<hzura::Photon> * photon_candidates = new std::vector<hzura::Photon>();
+      // auto deleter = [](std::vector<hzura::Photon> * p){ std::cout << "[deleter called]\n"; delete p; };
+      // std::shared_ptr< std::vector<hzura::Photon> > photon_candidates ( new std::vector<hzura::Photon> , deleter);
+      std::shared_ptr< std::vector<hzura::Photon> > photon_candidates ( new std::vector<hzura::Photon> , deleter);
       hzura::Photon   photon_candidate;
 
       for(int i = 0; i < event->Photons_; i++){
@@ -55,18 +59,20 @@ namespace hzura {
         photon_candidates->emplace_back( photon_candidate );
       }
 
+      MSG_DEBUG("hzura::ObjectPreselector.preselect_photons(): photon_candidates.size() =", photon_candidates->size());
       return photon_candidates;
     }
 
     // electrons ================================================================================================
-    std::vector<hzura::Electron> * preselect_electrons( const hzura::EventCfg &  cfg ){
+    std::shared_ptr< std::vector<hzura::Electron> > preselect_electrons( const hzura::EventCfg &  cfg ){
+      MSG_DEBUG("hzura::ObjectPreselector.preselect_electrons():  ... ");
       // cfg.ELECTRON_ENERGY_CORRECTION_TYPE
       // cfg.ELECTRON_PT_CUT
       // cfg.ELECTRON_ETA_CUT
       // cfg.ELECTRON_ETA_HOLE_CUT_START
       // cfg.ELECTRON_ETA_HOLE_CUT_END
       // cfg.ELECTRON_ID_CUT
-      std::vector<hzura::Electron> * electron_candidates = new std::vector<hzura::Electron>();
+      std::shared_ptr< std::vector<hzura::Electron> > electron_candidates (new std::vector<hzura::Electron>);
       hzura::Electron   electron_candidate;
 
       for(int i = 0; i < event->Electrons_; i++){
@@ -86,15 +92,17 @@ namespace hzura {
         electron_candidates->emplace_back( electron_candidate );
       }
 
+      MSG_DEBUG("hzura::ObjectPreselector.preselect_electrons(): electron_candidates.size() =", electron_candidates->size());
       return electron_candidates;
     }
 
     // photons ================================================================================================
-    std::vector<hzura::Muon> * preselect_muons( const hzura::EventCfg & cfg ){
+    std::shared_ptr< std::vector<hzura::Muon> > preselect_muons( const hzura::EventCfg & cfg ){
+      MSG_DEBUG("hzura::ObjectPreselector.preselect_muons():  ... ");
       // cfg.MUON_PT_CUT
       // cfg.MUON_ETA_CUT
       // cfg.MUON_ISOID_CUT
-      std::vector<hzura::Muon> * muon_candidates = new std::vector<hzura::Muon>();
+      std::shared_ptr< std::vector<hzura::Muon> > muon_candidates ( new std::vector<hzura::Muon> );
       hzura::Muon   muon_candidate;
 
       for(int i = 0; i < event->Muons_; i++){
@@ -118,11 +126,13 @@ namespace hzura {
 
         muon_candidates->emplace_back( muon_candidate );
       }
+      MSG_DEBUG("hzura::ObjectPreselector.preselect_muons(): muon_candidates.size() =", muon_candidates->size());
       return muon_candidates;
     }
 
     // jets ================================================================================================
-    void preselect_jets( const hzura::EventCfg &  cfg, std::vector<hzura::Jet> * ljet_candidates, std::vector<hzura::Jet> * bjet_candidates){
+    void preselect_jets( const hzura::EventCfg &  cfg, hzura::HzuraEvent & hzura_event ){
+      MSG_DEBUG("hzura::ObjectPreselector.preselect_jets():  ... ");
       // cfg.JET_PT_CUT
       // cfg.JET_ETA_CUT
       // cfg.JET_ID_CUT
@@ -131,15 +141,15 @@ namespace hzura {
       // cfg.JET_JER
       // cfg.JET_JEC_TYPE
       // cfg.JET_JEC_DIR
-      ljet_candidates = new std::vector<hzura::Jet>();
-      bjet_candidates = new std::vector<hzura::Jet>();
+
+      hzura_event.ljet_candidates = std::shared_ptr< std::vector<hzura::Jet> > ( new std::vector<hzura::Jet> );
+      hzura_event.bjet_candidates = std::shared_ptr< std::vector<hzura::Jet> > ( new std::vector<hzura::Jet> );
       hzura::Jet      jet_candidate;
       bool btagged = false;
 
       jec_unc_calculator.SetActiveJetCorrectionUncertainty( cfg.JET_JEC_TYPE );
       for(int i = 0; i < event->Jets_; i++){
         jet_candidate.Init( i );
-
         // Evaluate JER smearing after nominal JEC is applied but before systematic variaion in JEC - only for MC
         apply_jer_smearing( jet_candidate, cfg.JET_JER ); // such as "central"
 
@@ -155,20 +165,23 @@ namespace hzura {
         // split based on btagging decigion
         btagged = false;
         hzura::calc_btag_variables( jet_candidate );
-        hzura::set_jet_btag_sfs( jet_candidate, btag_sf_calculator_b );
+        hzura::set_jet_btag_sfs( jet_candidate, btag_sf_calculator_b ); 
         if( cfg.JET_BTAGGER == "DeepCSV" ){
           if(cfg.JET_BTAGGER_ID == hzura::id_names::loose and jet_candidate.btag_DeepCSV_isLoose )   btagged = true;
           if(cfg.JET_BTAGGER_ID == hzura::id_names::medium and jet_candidate.btag_DeepCSV_isMedium ) btagged = true;
           if(cfg.JET_BTAGGER_ID == hzura::id_names::tight and jet_candidate.btag_DeepCSV_isTight )   btagged = true;
         }
 
-        if( btagged ) bjet_candidates->emplace_back( jet_candidate );
-        else          ljet_candidates->emplace_back( jet_candidate );
+        if( btagged ) hzura_event.bjet_candidates->emplace_back( jet_candidate );
+        else          hzura_event.ljet_candidates->emplace_back( jet_candidate );
       }
+      MSG_DEBUG("hzura::ObjectPreselector.preselect_jets(): bjet_candidates->size() ljet_candidates->size() =", hzura_event.bjet_candidates->size(), hzura_event.ljet_candidates->size());
     }
 
     // get_events_from_cfgs ================================================================================================
     std::vector<hzura::HzuraEvent> get_events_from_cfgs( const std::vector<hzura::EventCfg> & cfgs ){
+      MSG_DEBUG("hzura::ObjectPreselector.get_events_from_cfgs(): begin ... ");
+      event = hzura::glob::event;
       vector<HzuraEvent> answer;
 
       // PrimaryVertexes =- nothing to do ... 
@@ -177,12 +190,15 @@ namespace hzura {
 
       // calculate default met
       // https://twiki.cern.ch/twiki/bin/viewauth/CMS/MissingETRun2Corrections#xy_Shift_Correction_MET_phi_modu
+      MSG_DEBUG("hzura::ObjectPreselector.get_events_from_cfgs(): calculate default met ... ");
       hzura::MET event_met;
       event_met.Init();
       set_met_filter_flag( event_met );
 
       //===================================
+      MSG_DEBUG("hzura::ObjectPreselector.get_events_from_cfgs(): loop over cfgs ... ");
       for(int i = 0; i < cfgs.size(); ++i){
+        MSG_DEBUG("hzura::ObjectPreselector.get_events_from_cfgs(): process cfg N ... ", i);
         HzuraEvent event_i;
 
         const hzura::EventCfg & cfg_i = cfgs[i];
@@ -204,7 +220,7 @@ namespace hzura {
         if( not event_i.photon_candidates   ) event_i.photon_candidates   = preselect_photons( cfg_i );
         if( not event_i.electron_candidates ) event_i.electron_candidates = preselect_electrons( cfg_i );
         if( not event_i.muon_candidates     ) event_i.muon_candidates     = preselect_muons( cfg_i );
-        if( not event_i.ljet_candidates or not event_i.bjet_candidates )    preselect_jets( cfg_i, event_i.ljet_candidates, event_i.bjet_candidates );
+        if( not event_i.ljet_candidates or not event_i.bjet_candidates )    preselect_jets( cfg_i, event_i );
 
         // in any cases calculate MET
         event_i.met = event_met;
@@ -229,6 +245,7 @@ namespace hzura {
         answer.emplace_back( event_i );
       }
 
+      MSG_DEBUG("hzura::ObjectPreselector.get_events_from_cfgs(): return ... ");
       return answer;
     }
   };

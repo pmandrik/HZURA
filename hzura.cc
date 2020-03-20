@@ -153,6 +153,7 @@ int main(int argc, char *argv[]) { // FIXME
   Reader * reader = new Reader( input_file );
   Events * event     = reader->event;
   hzura::glob::event = event;
+  msg( "event !!!! ", hzura::glob::event );
 
   Long64_t entrys = hzura::glob::event->fChain->GetEntriesFast();
   Long64_t entry = 0;
@@ -171,6 +172,7 @@ int main(int argc, char *argv[]) { // FIXME
   entrys = TMath::Min( (Long64_t)1000, entrys);
 
   for(;entry < entrys; entry++){
+    msg("entry ... ", entry);
     hzura::glob::event->GetEntry(entry);
     
     if( not (entry % 1000) )
@@ -178,7 +180,9 @@ int main(int argc, char *argv[]) { // FIXME
 
     // 0. remove info from previous event
     vector<hzura::HzuraEvent> hzura_events = preselector.get_events_from_cfgs( analyses_configs );
-    const hzura::HzuraEvent & hzura_event  = hzura_events[0];
+    //msg( "hzura_events.size()", hzura_events.size());
+    // const hzura::HzuraEvent & hzura_event  = hzura_events[0];
+    //msg( "hzura_events.size()", hzura_events.size());
 
     /*
     // 1. make some control plots
