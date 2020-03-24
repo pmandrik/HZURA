@@ -56,7 +56,7 @@ namespace hzura {
   class SFFileReader {
     public : 
       SFFileReader(const std::string input_file, double w = 1){
-        pmlib::msg( "hzura::SFReader process", input_file );
+        pm::msg( "hzura::SFReader process", input_file );
         weight = w;
         std::unique_ptr<TFile> file( TFile::Open(input_file.c_str()) );
 
@@ -75,7 +75,7 @@ namespace hzura {
           hist->SetDirectory(0);
           names_x_hists[ key->GetName() ] = hist;
 
-          pmlib::msg( "hzura::SFReader(): add", key->GetName() );
+          pm::msg( "hzura::SFReader(): add", key->GetName() );
         }
       
         file->Close();

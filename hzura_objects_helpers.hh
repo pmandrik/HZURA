@@ -138,7 +138,7 @@ namespace hzura {
     // https://twiki.cern.ch/twiki/bin/viewauth/CMS/EgammaMiniAODV2#Applying_the_Energy_Scale_and_sm
       const int & index = p.index;
 
-      Float_t E_corrected = 0;
+      Float_t E_corrected = 1;
       if( type == "ecalEnergyPreCorr" ) E_corrected = hzura::glob::event->Photons_ecalEnergyPreCorr[index]; //  ecalEnergy before scale & smearing corrections
       else if( type == "ecalEnergyPostCorr" ) E_corrected = hzura::glob::event->Photons_ecalEnergyPostCorr[index]; //  ecalEnergy of electron after scale & smearing corrections
       else if( type == "energyScaleUp" ) E_corrected = hzura::glob::event->Photons_energyScaleUp[index]; //  energy with the ecal energy scale shifted 1 sigma up (adding gain/stat/syst in quadrature)
@@ -157,6 +157,7 @@ namespace hzura {
       else if( type == "energySigmaPhiDown" ) E_corrected = hzura::glob::event->Photons_energySigmaPhiDown[index]; //  energy with the ecal energy smearing value shifted 1 sigma(phi) down
       else if( type == "energySigmaRhoUp" ) E_corrected = hzura::glob::event->Photons_energySigmaRhoUp[index]; //  energy with the ecal energy smearing value shifted 1 sigma(rho) up
       else if( type == "energySigmaRhoDown" ) E_corrected = hzura::glob::event->Photons_energySigmaRhoDown[index]; //  energy with the ecal energy smearing value shifted 1 sigma(rho) down
+      else msg_err( "hzura::apply_energy_correction(): can't find energy correction name\"", type, "\"" );
       
       p.tlv = p.tlv * (E_corrected / p.tlv.E());
   }

@@ -7,6 +7,7 @@
 namespace hzura {
 
   enum id_names {
+    none = -1,
     loose = 0,
     medium,
     tight,
@@ -35,6 +36,7 @@ namespace hzura {
 
   class EventCfg {
     public:
+    std::string name;
     // PHOTONS OPTIONS =- -= =- -= =- -= =- -=
     std::string PHOTON_ENERGY_CORRECTION_TYPE; // "ecalEnergyPreCorr" "ecalEnergyPostCorr" "energyScaleUp" "energyScaleDown" "energyScaleStatUp" "energyScaleStatDown" "energyScaleSystUp"
                                                // "energyScaleSystDown" "energyScaleGainUp" "energyScaleGainDown" "energyScaleEtUp" "energyScaleEtDown" 
@@ -68,29 +70,32 @@ namespace hzura {
     std::string MET_SYS;                       // "UnclusteredEnUp" "UnclusteredEnDown"
     bool MET_XYCORR;
 
-    EventCfg(){
+    EventCfg(std::string name_ = ""){
+      name = name_;
+
       PHOTON_PT_CUT = 0;
       PHOTON_ETA_CUT = 9999;
       PHOTON_ETA_HOLE_CUT_START = -999;
       PHOTON_ETA_HOLE_CUT_END   = -999;
-      PHOTON_ID_CUT = id_names::loose;
+      PHOTON_ID_CUT = id_names::none;
+      PHOTON_ENERGY_CORRECTION_TYPE = "";
       // ELECTRONS OPTIONS =- -= =- -= =- -= =- -=
-      ELECTRON_ENERGY_CORRECTION_TYPE = "ecalEnergyPostCorr";
+      ELECTRON_ENERGY_CORRECTION_TYPE = "";
       ELECTRON_PT_CUT = 0;
       ELECTRON_ETA_CUT = 9999;
       ELECTRON_ETA_HOLE_CUT_START = -999;
       ELECTRON_ETA_HOLE_CUT_END = -999;
-      ELECTRON_ID_CUT = id_names::loose;
+      ELECTRON_ID_CUT = id_names::none;
       // MUONS OPTIONS =- -= =- -= =- -= =- -=
       MUON_PT_CUT = 0;
       MUON_ETA_CUT = 999;
-      MUON_ISOID_CUT = id_names::loose;
+      MUON_ISOID_CUT = id_names::none;
       // JETS OPTIONS =- -= =- -= =- -= =- -=
       JET_PT_CUT = 0;
       JET_ETA_CUT = 9999;
-      JET_ID_CUT = id_names::loose;
+      JET_ID_CUT = id_names::none;
       JET_BTAGGER = "DeepCSV";
-      JET_BTAGGER_ID = id_names::loose;
+      JET_BTAGGER_ID = id_names::none;
       JET_JER = "central";
       JET_JEC_TYPE = "";
       bool JET_JEC_DIR = true;

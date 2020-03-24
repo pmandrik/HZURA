@@ -1,7 +1,7 @@
 
 // extra libraries
-#include "external/pmlib_msg.hh"
-using namespace pmlib;
+#include "external/PMANDRIK_LIBRARY/pmlib_msg.hh"
+using namespace pm;
 
 // external libraries 
 // https://twiki.cern.ch/twiki/bin/view/CMS/BTagCalibration#Standalone
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) { // FIXME
   }
   string input_file = argv[1];
 
-  int verbose_lvl = pmlib::verbose::VERBOSE;
+  int verbose_lvl = pm::verbose::VERBOSE;
   hzura::glob::Init( "2016", nullptr );
   hzura::ObjectPreselector preselector;
 
@@ -138,22 +138,53 @@ int main(int argc, char *argv[]) { // FIXME
 
   // https://arxiv.org/pdf/1807.06325.pdf
   // https://arxiv.org/pdf/1706.09936.pdf
-  Float_t Muon_pt_cut  = 20;
-  Float_t Muon_eta_cut = 2.4;
-
-  // FIXME
-  Float_t Jet_pt_cut  = 20;
-  Float_t Jet_eta_cut = 3;
 
   // TODO
-  EventCfg cfg = EventCfg();
-  std::vector<hzura::EventCfg> analyses_configs = { cfg };
+  EventCfg cfg     = EventCfg();
+  cfg.name = "Basic";
+  // https://arxiv.org/pdf/1804.02716.pdf
+  cfg.PHOTON_ENERGY_CORRECTION_TYPE = "ecalEnergyPostCorr"; // same as PHOTON_ENERGY_CORRECTION_TYPE
+  cfg.PHOTON_PT_CUT  = 20;
+  cfg.PHOTON_ETA_CUT = 2.5;
+  cfg.PHOTON_ETA_HOLE_CUT_START = 1.44;
+  cfg.PHOTON_ETA_HOLE_CUT_END = 1.57;
+  cfg.PHOTON_ID_CUT = id_names::tight;                         // id_names::loose id_names::medium id_names::tight
+  // https://arxiv.org/pdf/1812.10529.pdf
+  cfg.ELECTRON_ENERGY_CORRECTION_TYPE = "ecalEnergyPostCorr"; // same as PHOTON_ENERGY_CORRECTION_TYPE
+  cfg.ELECTRON_PT_CUT = 20;
+  cfg.ELECTRON_ETA_CUT = 2.5;;
+  cfg.ELECTRON_ETA_HOLE_CUT_START = 1.479;
+  cfg.ELECTRON_ETA_HOLE_CUT_END = 1.566;
+  cfg.ELECTRON_ID_CUT = id_names::tight;      // id_names::loose id_names::medium id_names::tight
+  // https://arxiv.org/pdf/1807.06325.pdf
+  // https://arxiv.org/pdf/1706.09936.pdf
+  cfg.MUON_PT_CUT    = 20;
+  cfg.MUON_ETA_CUT   = 2.4;
+  cfg.MUON_ISOID_CUT = id_names::tight;       // id_names::loose id_names::medium id_names::tight
+  cfg.JET_PT_CUT = 20;
+  cfg.JET_ETA_CUT = 3;
+  cfg.JET_ID_CUT = id_names::tight;           // id_names::loose id_names::medium id_names::tight
+  cfg.JET_BTAGGER = "DeepCSV";                // "DeepCSV"
+  cfg.JET_BTAGGER_ID = id_names::tight;       // id_names::loose id_names::medium id_names::tight
+  cfg.JET_JER = "central";                    // "central" "up" "down"
+  cfg.JET_JEC_TYPE = "";                      // "Total", "SubTotalMC", "SubTotalAbsolute", "SubTotalScale", "SubTotalPt", "SubTotalRelative", "SubTotalPileUp", "FlavorQCD", "TimePtEta"
+  cfg.JET_JEC_DIR = true;
+  cfg.MET_SYS     = "";                       // "UnclusteredEnUp" "UnclusteredEnDown"
+  cfg.MET_XYCORR = true;
+
+  EventCfg cfg_uncorrected = cfg;
+  cfg_uncorrected.name = "Uncorrected";
+  cfg_uncorrected.ELECTRON_ENERGY_CORRECTION_TYPE = "";
+  cfg_uncorrected.PHOTON_ENERGY_CORRECTION_TYPE   = "";
+
+  EventCfg cfg_zero = EventCfg();
+  cfg_zero.name = "Zero selections";
+  std::vector<hzura::EventCfg> analyses_configs = { cfg, cfg_uncorrected, cfg_zero };
 
   // 0. read events ================================================================================================
   Reader * reader = new Reader( input_file );
   Events * event     = reader->event;
   hzura::glob::event = event;
-  msg( "event !!!! ", hzura::glob::event );
 
   Long64_t entrys = hzura::glob::event->fChain->GetEntriesFast();
   Long64_t entry = 0;
@@ -172,17 +203,25 @@ int main(int argc, char *argv[]) { // FIXME
   entrys = TMath::Min( (Long64_t)1000, entrys);
 
   for(;entry < entrys; entry++){
-    msg("entry ... ", entry);
     hzura::glob::event->GetEntry(entry);
     
     if( not (entry % 1000) )
-      pmlib::msg_progress( float(entry)/entrys );
+      pm::msg_progress( float(entry)/entrys );
 
     // 0. remove info from previous event
-    vector<hzura::HzuraEvent> hzura_events = preselector.get_events_from_cfgs( analyses_configs );
-    //msg( "hzura_events.size()", hzura_events.size());
-    // const hzura::HzuraEvent & hzura_event  = hzura_events[0];
-    //msg( "hzura_events.size()", hzura_events.size());
+
+    // OBJECT SELECTIONS ==============================================
+    // 2. apply basic cuts on events
+    vector<hzura::HzuraEvent> hzura_events = preselector.PreselectEvents( analyses_configs );
+    preselector.DumpEventsInfo( analyses_configs, hzura_events );
+
+    for(int i = 0, imax = hzura_events.size(); i < imax; ++i){
+      const hzura::HzuraEvent & hevents = hzura_events[i]; 
+      const hzura::EventCfg & config = analyses_configs[i];
+
+      msg( "Process cfg: ", config.name );
+      // hevents.Print();
+    }
 
     /*
     // 1. make some control plots

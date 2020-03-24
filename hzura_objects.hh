@@ -122,9 +122,17 @@ namespace hzura {
 
   class HzuraEvent {
     public:
-      HzuraEvent (){ }
+      HzuraEvent (){ verbose_lvl = 5; }
 
       ~HzuraEvent(){}
+
+      void Print() const {
+        MSG_INFO("Info about events, before/after basic selections:");
+        MSG_INFO("  photons: ", hzura::glob::event->Photons_, photon_candidates->size() );
+        MSG_INFO("  electrons: ", hzura::glob::event->Electrons_, electron_candidates->size() );
+        MSG_INFO("  muons: ", hzura::glob::event->Muons_, muon_candidates->size() );
+        MSG_INFO("  jets: ", hzura::glob::event->Jets_, ljet_candidates->size() + bjet_candidates->size() );
+      }
 
       std::shared_ptr< std::vector<hzura::Photon>   > photon_candidates;
       std::shared_ptr< std::vector<hzura::Electron> > electron_candidates;
@@ -133,6 +141,7 @@ namespace hzura {
       std::shared_ptr< std::vector<hzura::Jet>      > bjet_candidates;
 
       hzura::MET met;
+      int verbose_lvl;
   };
 };
 
