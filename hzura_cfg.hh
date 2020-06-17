@@ -46,6 +46,7 @@ namespace hzura {
     Float_t PHOTON_ETA_HOLE_CUT_START;
     Float_t PHOTON_ETA_HOLE_CUT_END;
     int PHOTON_ID_CUT;                         // id_names::loose id_names::medium id_names::tight
+    bool PHOTON_SET_SFS;
     // ELECTRONS OPTIONS =- -= =- -= =- -= =- -=
     std::string ELECTRON_ENERGY_CORRECTION_TYPE; // same as PHOTON_ENERGY_CORRECTION_TYPE
     Float_t ELECTRON_PT_CUT;
@@ -79,6 +80,7 @@ namespace hzura {
       PHOTON_ETA_HOLE_CUT_END   = -999;
       PHOTON_ID_CUT = id_names::none;
       PHOTON_ENERGY_CORRECTION_TYPE = "";
+      PHOTON_SET_SFS = true;
       // ELECTRONS OPTIONS =- -= =- -= =- -= =- -=
       ELECTRON_ENERGY_CORRECTION_TYPE = "";
       ELECTRON_PT_CUT = 0;

@@ -29,6 +29,7 @@ using namespace pm;
 #include <hzura_analyse_configuration_helpers.hh>
 #include <hzura_objects_helpers.hh>
 #include <hzura_objects_preselectors.hh>
+#include <hzura_output.hh>
 using namespace hzura;
 
 // GRIDNER interface
@@ -69,8 +70,9 @@ int main(int argc, char *argv[]) { // FIXME
   string input_file = argv[1];
 
   int verbose_lvl = pm::verbose::VERBOSE;
-  hzura::glob::Init( "2016", nullptr );
+  hzura::glob::Init( "2017", nullptr );
   hzura::ObjectPreselector preselector;
+  preselector.verbose_lvl = pm::verbose::VERBOSE;
 
   MSG_INFO("hzura::main(): process input file", input_file);
 
@@ -143,12 +145,13 @@ int main(int argc, char *argv[]) { // FIXME
   EventCfg cfg     = EventCfg();
   cfg.name = "Basic";
   // https://arxiv.org/pdf/1804.02716.pdf
-  cfg.PHOTON_ENERGY_CORRECTION_TYPE = "ecalEnergyPostCorr"; // same as PHOTON_ENERGY_CORRECTION_TYPE
+  cfg.PHOTON_ENERGY_CORRECTION_TYPE = ""; // "ecalEnergyPostCorr";
   cfg.PHOTON_PT_CUT  = 20;
   cfg.PHOTON_ETA_CUT = 2.5;
   cfg.PHOTON_ETA_HOLE_CUT_START = 1.44;
   cfg.PHOTON_ETA_HOLE_CUT_END = 1.57;
-  cfg.PHOTON_ID_CUT = id_names::tight;                         // id_names::loose id_names::medium id_names::tight
+  cfg.PHOTON_ID_CUT = id_names::none;                        // id_names::loose id_names::medium id_names::tight
+  cfg.PHOTON_SET_SFS = false; // not going to set them for flashgg
   // https://arxiv.org/pdf/1812.10529.pdf
   cfg.ELECTRON_ENERGY_CORRECTION_TYPE = "ecalEnergyPostCorr"; // same as PHOTON_ENERGY_CORRECTION_TYPE
   cfg.ELECTRON_PT_CUT = 20;
@@ -180,8 +183,19 @@ int main(int argc, char *argv[]) { // FIXME
   EventCfg cfg_zero = EventCfg();
   cfg_zero.name = "Zero selections";
   std::vector<hzura::EventCfg> analyses_configs = { cfg, cfg_uncorrected, cfg_zero };
+  std::vector<TH1D*> selections_vec;
+  for(auto config : analyses_configs) 
+    selections_vec.push_back( new TH1D( (config.name + "selections").c_str(), (config.name + "selections").c_str(), 100, 0, 1)) );
+
+  // setup output variables ================================================================================================
+  TFile * output_file = TFile::Open();
+      double dR_yy, dR_jj, dR_WL, dR_WW, dR_HH;
+      double m_yy, y1_Et_div_m_yy, y2_Et_div_m_yy
+      TLorentzVector y1_tlv, y2_tlv, H_yy_tlv, ljet1_tlv, ljet2_tlv, W_jj_tlv, mu_leading_tlv, el_leading_tlv, lep_leading_tlv;
+      TLorentzVector nu_reco_tlv, W_elnu_tlv, H_WW_tlv, nu_tlv, HH_tlv, HWl_tlv;
 
   // 0. read events ================================================================================================
+  input_file.cd();
   Reader * reader = new Reader( input_file );
   Events * event     = reader->event;
   hzura::glob::event = event;
@@ -218,18 +232,94 @@ int main(int argc, char *argv[]) { // FIXME
     for(int i = 0, imax = hzura_events.size(); i < imax; ++i){
       const hzura::HzuraEvent & hevents = hzura_events[i]; 
       const hzura::EventCfg & config = analyses_configs[i];
+      TH1D * selections              = selections_vec[i];
 
-      msg( "Process cfg: ", config.name );
-      // hevents.Print();
+      msg( "process cfg: ", config.name );
+
+      std::vector<hzura::Photon>    & photons = *(hevents.photon_candidates);
+      std::vector<hzura::Electron>  & electrons = *(hevents.electron_candidates);
+      std::vector<hzura::Muon>      & muons = *(hevents.muon_candidates);
+      std::vector<hzura::Jet>       & ljets = *(hevents.ljet_candidates);
+      std::vector<hzura::Jet>       & bjets = *(hevents.bjet_candidates);
+      hzura::MET & met = hevents.met;
+
+      // EVENT SELECTIONS ==============================================
+      hevents.selection_weight = false;                   // remove event by default
+
+      // At least one lepton
+      if( electrons.size() + muons.size() < 1 ) continue;
+      hevents.selections->Fill("At least one lepton", 1);
+
+      // No b-jets:
+      if( ljets.size() < 2 ) continue;
+      selections->Fill("At least two light jets", 1);
+
+      // at least two photons
+      if( photons.size() < 2) continue;
+      selections->Fill("At least two photons", 1);
+
+      y1_tlv = photons[0].tlv ;
+      y2_tlv  = photons[1].tlv ;
+      H_yy_tlv = y1_tlv + y2_tlv ;
+
+      // M yy in [105, 160]
+      if( H_yy_tlv.M() < 105 or H_yy_tlv.M() > 160 ) continue;
+      selections->Fill("H_yy_tlv.M() in [105, 160]", 1);
+
+      hevents.selection_weight = true;
+      // EVENT HLV RECONSTRUCTION ==============================================
+      // W->jj candidate
+      ljet1_tlv = ljets[0].tlv;
+      ljet2_tlv = ljets[1].tlv;
+      W_jj_tlv = ljet_1 + ljet_2;
+
+
+      // W->elnu candidate
+      // el
+      int leadin_mu_index = get_leading_by_pt( muons );
+      int leadin_el_index = get_leading_by_pt( electrons );
+      if( leadin_mu_index >= 0 ) mu_leading_tlv = muons[ leadin_mu_index ];
+      if( leadin_el_index >= 0 ) el_leading_tlv = electrons[ leadin_el_index ];
+      lep_leading_tlv = mu_leading_tlv;
+      if( el_leading_tlv.Pt() > lep_leading_tlv.Pt() ) lep_leading_tlv = el_leading_tlv;
+
+      // nu
+      nu_tlv.SetPtEtaPhiM(met.pt, 0, met.phi, 0.0);
+
+      // H->WW
+      bool HH_reconstructed = hzura::reconstruct_H_from_WW( nu_tlv, W_jj_tlv + el_leading_tlv, nu_reco_tlv, H_WW_tlv);
+      W_elnu_tlv = nu_reco_tlv + el_leading_tlv;
+      
+      // HH
+      HH_tlv = H_yy_tlv + H_WW_tlv;
+      
+      // HWL
+      HWl_tlv = nu_reco_tlv + H_WW_tlv;
+
+      // Delta Rs
+      dR_yy  = y1_tlv.DeltaR( y2_tlv );
+      dR_jj  = ljet1_tlv.DeltaR( ljet2_tlv );
+      dR_WL  = W_jj_tlv.DeltaR( el_leading_tlv );
+      dR_WW  = -1, dR_HH = -1;
+      if( HH_reconstructed ) {
+        dR_WW  = W_jj_tlv.DeltaR( W_elnu_tlv );
+        dR_HH = H_yy_tlv.DeltaR( H_WW_tlv )
+      }
+
+      // Delta Phi
+      double dPhi_nuL = nu_tlv.DeltaPhi( el_leading_tlv );
+
+      // other
+      m_yy = H_yy_tlv.M();
+      y1_Et_div_m_yy = y1_tlv.Et() / m_yy;
+      y2_Et_div_m_yy = y2_tlv.Et() / m_yy;
     }
+
 
     /*
     // 1. make some control plots
     // msg("Event ... ");
     // for(int i = 0; i < event->trigger_fires.size(); i++) msg( "trigger", i, event->trigger_fires[i] );
-
-    // OBJECT SELECTIONS ==============================================
-    // 2. apply basic cuts on events
 
     // 2.5 make some control plots ====================================================================================
     // check if ISO is used in ID criteria

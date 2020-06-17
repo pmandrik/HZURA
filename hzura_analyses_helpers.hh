@@ -82,6 +82,51 @@ namespace hzura {
     make_combinations_filtered(inp_1, inp_2, out, [](Particle * a, Particle * b) { return (a->Charge() == b->Charge()); } );
   }
 
+  // get leading index, Pt
+  int get_leading_by_pt(const std::vector<A> & inp_1){
+    double leading_pt = -999;
+    int answer = -1;
+    for(int i = 0; i < inp_1.size(); i++){
+      A & obj = inp_1[i];
+      if( leading_pt > obj.tlv.Pt() ) continue;
+      leading_pt = obj.tlv.Pt()
+    }
+    return answer;
+  }
+
+  // reconstruct Higgs from H->WW->jj nu l decay
+  bool reconstruct_H_from_WW(const TLorentzVector & P_wl, const TLorentzVector & P_n, TLorentzVector & P_n_answer, TLorentzVector & P_H_answer) {
+    double m_h = 125;
+		double C = (m_h - P_wl.M()) * (m_h + P_wl.M()) * 0.5 + P_wl.Px() * P_n.Px() + P_wl.Py() * P_n.Py();
+		double a = P_wl.E() * P_wl.E() - P_wl.Pz() * P_wl.Pz();
+		double b = -2 * C * P_wl.Pz();
+		double c = P_wl.E() * P_wl.E() * P_n.Pt() * P_n.Pt() - C * C;
+
+		if(a < 0.00000001) return false;
+		b /= a;
+		c /= a;
+		double D = b * b - 4 * c;
+		double x = -b / 2;
+
+		if(D > 0) {
+			double k = sqrt(D) / 2;
+			
+			TLorentzVector p1, p2;
+			p1.SetXYZM(P_n.Px(), P_n.Py(), x - k, P_n.M());
+			p2.SetXYZM(P_n.Px(), P_n.Py(), x + k, P_n.M());
+
+      TLorentzVector P_H1 = p1 + P_wl;
+      TLorentzVector P_H2 = p2 + P_wl;
+
+      if( P_H1.M() < P_H2.M() ) P_n_answer = p1;
+      else                      P_n_answer = p2;
+		}
+		else P_n.SetXYZM(P_n.Px(), P_n.Py(), x, P_n.M());
+
+    P_H_answer = P_n_answer + P_wl;
+    return true;
+  }
+
 };
 
 #endif

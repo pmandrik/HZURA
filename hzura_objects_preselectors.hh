@@ -54,7 +54,7 @@ namespace hzura {
         if( cfg.PHOTON_ID_CUT == hzura::id_names::loose  and not event->Photons_isLoose[i] )  continue;
         if( cfg.PHOTON_ID_CUT == hzura::id_names::medium and not event->Photons_isMedium[i] ) continue;
         if( cfg.PHOTON_ID_CUT == hzura::id_names::tight  and not event->Photons_isTight[i] )  continue;
-        set_egamma_sfs( photon_candidate, photon_sf_calculator, cfg.PHOTON_ID_CUT );
+        if( cfg.PHOTON_SET_SFS ) set_egamma_sfs( photon_candidate, photon_sf_calculator, cfg.PHOTON_ID_CUT );
 
         photon_candidates->emplace_back( photon_candidate );
       }
@@ -267,11 +267,11 @@ namespace hzura {
         const hzura::EventCfg & config = cfgs[i];
         table[0][i+1] = cfgs[i].name;
         const hzura::HzuraEvent & hevents = events[i]; 
-        table[1][i+1] = to_string( hevents.photon_candidates->size() );        msg(14);
-        table[2][i+1] = to_string( hevents.electron_candidates->size() );        msg(15);
-        table[3][i+1] = to_string( hevents.muon_candidates->size() );        msg(16);
-        table[4][i+1] = to_string( hevents.ljet_candidates->size() );        msg(17);
-        table[5][i+1] = to_string( hevents.bjet_candidates->size() );        msg(18);
+        table[1][i+1] = to_string( hevents.photon_candidates->size() );     
+        table[2][i+1] = to_string( hevents.electron_candidates->size() );   
+        table[3][i+1] = to_string( hevents.muon_candidates->size() );        
+        table[4][i+1] = to_string( hevents.ljet_candidates->size() );        
+        table[5][i+1] = to_string( hevents.bjet_candidates->size() );        
       }
       table[1][0] = "N photons";
       table[2][0] = "N electrons";

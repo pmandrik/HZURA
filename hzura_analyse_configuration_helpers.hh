@@ -58,6 +58,19 @@ namespace hzura {
       answer.hname_medium = "EGamma_SF2D";
       answer.hname_tight  = "EGamma_SF2D";
     }
+    if(hzura::glob::year_era == "2017"){ // Fall17V2 2017 ID ???
+      SFFileReader *sf_l  = new SFFileReader( "data/electrons_sf_2017/2017_ElectronLoose.root" );
+      SFFileReader *sf_m  = new SFFileReader( "data/electrons_sf_2017/2017_ElectronMedium.root" );
+      SFFileReader *sf_t  = new SFFileReader( "data/electrons_sf_2017/2017_ElectronTight.root" );
+
+      answer.AddReader( "l",  sf_l );
+      answer.AddReader( "m",  sf_m );
+      answer.AddReader( "t",  sf_t );
+
+      answer.hname_loose  = "EGamma_SF2D";
+      answer.hname_medium = "EGamma_SF2D";
+      answer.hname_tight  = "EGamma_SF2D";
+    }
     
     return answer;
   }
@@ -103,6 +116,32 @@ namespace hzura {
       // answer.GetSF_iso_medium = [](const Float_t & eta, const Float_t & pt, const int & unc) { return GetSF_iso(eta, pt, unc, "NUM_MediumID_DEN_genTracks_eta_pt") };
       answer.GetSF_iso_tight  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_iso(eta, pt, unc, "NUM_TightRelIso_DEN_TightIDandIPCut_eta_pt"); }; 
     }
+
+    if(hzura::glob::year_era == "2017"){
+      SFFileReader *sf_id  = new SFFileReader("data/muons_sf_2017/RunBCDEF_SF_ID.root");
+      SFFileReader *sf_iso = new SFFileReader("data/muons_sf_2017/RunBCDEF_SF_ISO.root");
+
+      SFFileReader *sf_id_err  = new SFFileReader("data/muons_sf_2017/RunBCDEF_SF_ID_syst.root");
+      SFFileReader *sf_iso_err = new SFFileReader("data/muons_sf_2017/RunBCDEF_SF_ISO_syst.root");
+
+      answer.AddReader( "id",  sf_id  );
+      answer.AddReader( "iso", sf_iso );
+      answer.AddReader( "id_err",  sf_id_err  );
+      answer.AddReader( "iso_err", sf_iso_err );
+
+      //answer.GetSF_id = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc, const std::string & hname){ return answer.GetSF(eta, pt, "id", hname) + unc * answer.GetErr(eta, pt, "id_err", hname); };
+      //answer.GetSF_iso  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc, const std::string & hname){ return answer.GetSF(eta, pt, "iso", hname) + unc * answer.GetErr(eta, pt, "iso_err", hname); };
+      answer.GetSF_id = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc, const std::string & hname){ return answer.GetSF(eta, pt, "id_err", hname) + unc * answer.GetErr(eta, pt, "id_err", hname); };
+      answer.GetSF_iso  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc, const std::string & hname){ return answer.GetSF(eta, pt, "id_err", hname) + unc * answer.GetErr(eta, pt, "id_err", hname); };
+
+      answer.GetSF_id_loose  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_id(pt, TMath::Abs(eta), unc, "NUM_LooseID_DEN_genTracks_pt_abseta");  };
+      answer.GetSF_id_medium = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_id(pt, TMath::Abs(eta), unc, "NUM_MediumID_DEN_genTracks_pt_abseta"); };
+      answer.GetSF_id_tight  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_id(pt, TMath::Abs(eta), unc, "NUM_TightID_DEN_genTracks_pt_abseta");  }; 
+
+      answer.GetSF_iso_loose  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_iso(pt, TMath::Abs(eta), unc, "NUM_LooseRelIso_DEN_LooseID_pt_abseta"); };
+      // answer.GetSF_iso_medium = [](const Float_t & eta, const Float_t & pt, const int & unc) { return GetSF_iso(eta, pt, unc, "NUM_MediumID_DEN_genTracks_eta_pt") };
+      answer.GetSF_iso_tight  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_iso(pt, TMath::Abs(eta), unc, "NUM_TightRelIso_DEN_TightIDandIPCut_pt_abseta"); }; 
+    }
   
     return answer;
   }
@@ -129,7 +168,7 @@ namespace hzura {
     }
     if(hzura::glob::year_era == "2017") {
       unc_names = {"Total", "SubTotalMC", "SubTotalAbsolute", "SubTotalScale", "SubTotalPt", "SubTotalRelative", "SubTotalPileUp", "FlavorQCD", "TimePtEta"};
-      unc_inp_file = "";
+      unc_inp_file = "data/JEC/Fall17_17Nov2017_V32_MC/Fall17_17Nov2017_V32_MC_UncertaintySources_AK4PF.txt";
     }
     if(hzura::glob::year_era == "2018") {
       unc_names = {"Total", "SubTotalMC", "SubTotalAbsolute", "SubTotalScale", "SubTotalPt", "SubTotalRelative", "SubTotalPileUp", "FlavorQCD", "TimePtEta"};

@@ -140,6 +140,8 @@ namespace hzura {
       std::shared_ptr< std::vector<hzura::Jet>      > ljet_candidates;
       std::shared_ptr< std::vector<hzura::Jet>      > bjet_candidates;
 
+      bool selection_weight;
+
       hzura::MET met;
       int verbose_lvl;
   };
