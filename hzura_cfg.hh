@@ -18,10 +18,11 @@ namespace hzura {
     bool is_data;
     std::string year_era;
     int year;
-    Events * event;
+    // Events * event;
+    ReaderGRINDER * event;
     TRandom3 randGen;
 
-    void Init(const string & era, Events * event){
+    void Init(const string & era, ReaderGRINDER * event){
 
       hzura::glob::year_era = era;
       hzura::glob::event = event;
@@ -37,6 +38,12 @@ namespace hzura {
   class EventCfg {
     public:
     std::string name;
+
+    // GENPARTICLES OPTIONS =- -= =- -= =- -= =- -=
+    bool USE_GENPARTICLES;
+    std::vector<int> GENPARTICLES_SELECT_STATUS_CODES;
+    std::vector<int> GENPARTICLES_SELECT_IDS;
+
     // PHOTONS OPTIONS =- -= =- -= =- -= =- -=
     std::string PHOTON_ENERGY_CORRECTION_TYPE; // "ecalEnergyPreCorr" "ecalEnergyPostCorr" "energyScaleUp" "energyScaleDown" "energyScaleStatUp" "energyScaleStatDown" "energyScaleSystUp"
                                                // "energyScaleSystDown" "energyScaleGainUp" "energyScaleGainDown" "energyScaleEtUp" "energyScaleEtDown" 
@@ -70,10 +77,18 @@ namespace hzura {
     // MET OPTIONS =- -= =- -= =- -= =- -=
     std::string MET_SYS;                       // "UnclusteredEnUp" "UnclusteredEnDown"
     bool MET_XYCORR;
+    // FLASHGG OPTIONS =- -= =- -= =- -= =- -=
+    int FLASHGG_DIPHOTON_INDEX;
 
     EventCfg(std::string name_ = ""){
       name = name_;
 
+      // GENPARTICLES OPTIONS =- -= =- -= =- -= =- -=
+      USE_GENPARTICLES = true;
+      GENPARTICLES_SELECT_STATUS_CODES = {};
+      GENPARTICLES_SELECT_IDS = {};
+      // PHOTONS OPTIONS =- -= =- -= =- -= =- -=
+      FLASHGG_DIPHOTON_INDEX = -1;
       PHOTON_PT_CUT = 0;
       PHOTON_ETA_CUT = 9999;
       PHOTON_ETA_HOLE_CUT_START = -999;
@@ -100,12 +115,25 @@ namespace hzura {
       JET_BTAGGER_ID = id_names::none;
       JET_JER = "central";
       JET_JEC_TYPE = "";
-      bool JET_JEC_DIR = true;
+      JET_JEC_DIR = true;
       // MET OPTIONS =- -= =- -= =- -= =- -=
-      std::string MET_SYS = "";
-      bool MET_XYCORR = true;
+      MET_SYS = "";
+      MET_XYCORR = true;
+      // FLASHGG OPTIONS =- -= =- -= =- -= =- -=
+      FLASHGG_DIPHOTON_INDEX = -1;
     }
 
+    // -==--==--==--==--==--==--==--==--==-
+    bool SameGenParticles( const EventCfg & other ) const {
+      if( USE_GENPARTICLES != other.USE_GENPARTICLES ) return false;
+      if( GENPARTICLES_SELECT_STATUS_CODES.size() != other.GENPARTICLES_SELECT_STATUS_CODES.size() ) return false;
+      for(int i = 0; i < GENPARTICLES_SELECT_STATUS_CODES.size(); i++)
+        if( GENPARTICLES_SELECT_STATUS_CODES[i] != other.GENPARTICLES_SELECT_STATUS_CODES[i] ) return false;
+      if( GENPARTICLES_SELECT_IDS.size() != other.GENPARTICLES_SELECT_IDS.size() ) return false;
+      for(int i = 0; i < GENPARTICLES_SELECT_IDS.size(); i++)
+        if( GENPARTICLES_SELECT_IDS[i] != other.GENPARTICLES_SELECT_IDS[i] ) return false;
+      return true;
+    }
     // -==--==--==--==--==--==--==--==--==-
     bool SamePhotons( const EventCfg & other ) const {
       if( PHOTON_ENERGY_CORRECTION_TYPE != other.PHOTON_ENERGY_CORRECTION_TYPE ) return false;
@@ -114,6 +142,7 @@ namespace hzura {
       if( PHOTON_ETA_HOLE_CUT_START != other.PHOTON_ETA_HOLE_CUT_START ) return false;
       if( PHOTON_ETA_HOLE_CUT_END != other.PHOTON_ETA_HOLE_CUT_END ) return false;
       if( PHOTON_ID_CUT != other.PHOTON_ID_CUT ) return false;
+      if( FLASHGG_DIPHOTON_INDEX != other.FLASHGG_DIPHOTON_INDEX ) return false;
       return true;
     }
     // -==--==--==--==--==--==--==--==--==-
@@ -124,6 +153,7 @@ namespace hzura {
       if( ELECTRON_ETA_HOLE_CUT_START != other.ELECTRON_ETA_HOLE_CUT_START ) return false;
       if( ELECTRON_ETA_HOLE_CUT_END != other.ELECTRON_ETA_HOLE_CUT_END ) return false;
       if( ELECTRON_ID_CUT != other.ELECTRON_ID_CUT ) return false;
+      if( FLASHGG_DIPHOTON_INDEX != other.FLASHGG_DIPHOTON_INDEX ) return false;
       return true;
     }
     // -==--==--==--==--==--==--==--==--==-
@@ -131,6 +161,7 @@ namespace hzura {
       if( MUON_PT_CUT != other.MUON_PT_CUT ) return false;
       if( MUON_ETA_CUT != other.MUON_ETA_CUT ) return false;
       if( MUON_ISOID_CUT != other.MUON_ISOID_CUT ) return false;
+      if( FLASHGG_DIPHOTON_INDEX != other.FLASHGG_DIPHOTON_INDEX ) return false;
       return true;
     }
     // -==--==--==--==--==--==--==--==--==-
@@ -155,6 +186,12 @@ def make_comp():
     */
 
   };
+
+  EventCfg copy_cfg(const EventCfg & other, std::string name){
+    EventCfg answer = other;
+    answer.name = name;
+    return answer;
+  }
 
 };
 

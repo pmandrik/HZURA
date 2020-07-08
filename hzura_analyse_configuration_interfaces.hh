@@ -4,6 +4,40 @@
 
 namespace hzura {
 
+  // btag Efficiency readers ===============================================================================================
+  class BTagEffReader{
+    public:
+      BTagEffReader(){};
+      BTagEffReader(std::string input_file){
+        pm::msg( "hzura::BTagEffReader(): process", input_file );
+        std::unique_ptr<TFile> file( TFile::Open(input_file.c_str()) );
+
+        // loop on all entries of this file
+        // https://root.cern.ch/root/html/tutorials/io/copyFiles.C.html
+        for(int i = 0; i < 6; i++){
+          TH2D * hist = (TH2D*) (file->Get( ("eff_" + to_string(i)).c_str() ));
+          hist->SetDirectory(0);
+          pm::msg( "hzura::SFReader(): add", "eff_" + to_string(i) );
+
+          effs.push_back( hist );
+        }
+      
+        file->Close();
+      }
+
+    double GetEff(const double & pt, const double & eta, const int & jf){
+      TH2D* eff = effs.at( jf );
+      // msg( "GetEff", pt, eta, "=>", eff->FindBin( pt, eta ), "=>", eff->GetBinContent( eff->FindBin( pt, eta) ) );
+      return eff->GetBinContent( eff->FindBin( pt, eta) );
+    }
+
+    bool Valid(){
+      return effs.size();
+    }
+
+    vector<TH2D*> effs;
+  };
+
   // btag SF readers ===============================================================================================
   // Interface to read SF related to b-tagging
   // https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation2016Legacy
@@ -38,6 +72,7 @@ namespace hzura {
 
       Float_t GetSF(const std::string type, const Float_t & eta, const Float_t & pt) const {
         // msg( "hzura::BTagSFReader.GetSF(", type, eta, pt, ") ... "  );
+        // msg( reader.eval_auto_bounds(type, jf, eta, pt), working_point, jet_flavour );
         return reader.eval_auto_bounds(type, jf, eta, pt);
       }
     
@@ -84,7 +119,7 @@ namespace hzura {
       Float_t GetSF(const Float_t & eta, const Float_t & pt, const std::string & hist_name) const {
         auto it_hist = names_x_hists.find( hist_name );
         if( it_hist == names_x_hists.end() ){
-          msg_err("hzura::SFReader.GetSF: can't find hist", hist_name, ", available histograms:");
+          msg_err("hzura::SFReader.GetSF: can't find hist", "\"" + hist_name + "\",", "available histograms:");
           for(auto it = names_x_hists.begin(); it != names_x_hists.end(); it++)
             msg( it->first );
           return -1;
@@ -96,7 +131,7 @@ namespace hzura {
       Float_t GetErr(const Float_t & eta, const Float_t & pt, const std::string & hist_name) const {
         auto it_hist = names_x_hists.find( hist_name );
         if( it_hist == names_x_hists.end() ){
-          msg_err("hzura::SFReader.GetErr: can't find hist", hist_name, ", available histograms:");
+          msg_err("hzura::SFReader.GetErr: can't find hist", "\"" + hist_name + "\",", "available histograms:");
           for(auto it = names_x_hists.begin(); it != names_x_hists.end(); it++)
             msg( it->first );
           return -1;
@@ -111,9 +146,13 @@ namespace hzura {
 
   // Interface to calculate SF related to electrons, muons and photons
   // using different files wrapped by SFFileReader
-  class SFCalculator {
+  class SFCalculator : public pm::PmMsg {
     public:
+    SFCalculator(){}
+
     void AddReader(std::string name, SFFileReader* reader){
+      MSG_DEBUG("hzura::SFReader process ... ", name );
+
       sf_readers[ name ] = reader;
       fname_loose  = "l";
       fname_medium = "m";
@@ -123,7 +162,9 @@ namespace hzura {
     Float_t GetSF(const Float_t & eta, const Float_t & pt, const std::string & reader_name, const std::string & hist_name) const {
       auto it_reader = sf_readers.find(reader_name);
       if( it_reader == sf_readers.end() ){
-        return -1;
+        msg_err("hzura::SFCalculator.GetSF: can't find SFFileReader", "\"" + reader_name + "\",", "available SFFileReader:");
+        for(auto it = sf_readers.begin(); it != sf_readers.end(); it++) msg( it->first );
+        return -999;
       }
       return it_reader->second->GetSF(eta, pt, hist_name);
     }
@@ -131,7 +172,9 @@ namespace hzura {
     Float_t GetErr(const Float_t & eta, const Float_t & pt, const std::string & reader_name, const std::string & hist_name) const {
       auto it_reader = sf_readers.find(reader_name);
       if( it_reader == sf_readers.end() ){
-        return -1;
+        msg_err("hzura::SFCalculator.GetErr: can't find SFFileReader", "\"" + reader_name + "\",", "available SFFileReader:");
+        for(auto it = sf_readers.begin(); it != sf_readers.end(); it++) msg( it->first );
+        return -999;
       }
       return it_reader->second->GetErr(eta, pt, hist_name);
     }

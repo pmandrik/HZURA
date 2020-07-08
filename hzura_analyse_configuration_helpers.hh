@@ -5,15 +5,20 @@
 namespace hzura {
 
   // btag SF ===============================================================================================
-  BTagSFReader get_btag_sf_reader(const std::string & working_point, const std::string & jet_flavour){ // TODO 2017 2018
+  BTagSFReader get_btag_sf_reader(const std::string & working_point, const std::string & jet_flavour, std::string tagger = "DeepFlavour"){ // TODO 2017 2018
     // https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation2016Legacy
     // https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation94X
     // https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation102X
     BTagSFReader answer(working_point, jet_flavour);
-    if(hzura::glob::year_era == "2016")
-      answer.AddFile("DeepCSV", "data/jets_sf_2016/DeepCSV_2016LegacySF_WP_V1.csv"); // jets_sf_2016/DeepCSV_2016LegacySF_V1.csv
-    // if(hzura::glob::year_era == "2017")
-    // if(hzura::glob::year_era == "2018")
+
+    if(hzura::glob::year_era == "2016"){
+      if( tagger == "DeepCSV" )     answer.AddFile("DeepCSV", "data/jets_sf_2016/DeepCSV_2016LegacySF_WP_V1.csv"); // jets_sf_2016/DeepCSV_2016LegacySF_V1.csv
+    }
+    if(hzura::glob::year_era == "2017"){
+      if( tagger == "DeepCSV" )     answer.AddFile("DeepCSV", "data/jets_sf_2017/DeepCSV_94XSF_WP_V4_B_F.csv");
+      if( tagger == "DeepFlavour" ) answer.AddFile("DeepFlavour", "data/jets_sf_2017/DeepFlavour_94XSF_WP_V3_B_F.csv");
+    }
+    // if(hzura::glob::year_era == "2018") TODO
     return answer;
   }
 
@@ -59,6 +64,7 @@ namespace hzura {
       answer.hname_tight  = "EGamma_SF2D";
     }
     if(hzura::glob::year_era == "2017"){ // Fall17V2 2017 ID ???
+      msg("============================================================================================");
       SFFileReader *sf_l  = new SFFileReader( "data/electrons_sf_2017/2017_ElectronLoose.root" );
       SFFileReader *sf_m  = new SFFileReader( "data/electrons_sf_2017/2017_ElectronMedium.root" );
       SFFileReader *sf_t  = new SFFileReader( "data/electrons_sf_2017/2017_ElectronTight.root" );
@@ -70,6 +76,7 @@ namespace hzura {
       answer.hname_loose  = "EGamma_SF2D";
       answer.hname_medium = "EGamma_SF2D";
       answer.hname_tight  = "EGamma_SF2D";
+      msg("============================================================================================");
     }
     
     return answer;
@@ -129,17 +136,15 @@ namespace hzura {
       answer.AddReader( "id_err",  sf_id_err  );
       answer.AddReader( "iso_err", sf_iso_err );
 
-      //answer.GetSF_id = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc, const std::string & hname){ return answer.GetSF(eta, pt, "id", hname) + unc * answer.GetErr(eta, pt, "id_err", hname); };
-      //answer.GetSF_iso  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc, const std::string & hname){ return answer.GetSF(eta, pt, "iso", hname) + unc * answer.GetErr(eta, pt, "iso_err", hname); };
-      answer.GetSF_id = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc, const std::string & hname){ return answer.GetSF(eta, pt, "id_err", hname) + unc * answer.GetErr(eta, pt, "id_err", hname); };
-      answer.GetSF_iso  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc, const std::string & hname){ return answer.GetSF(eta, pt, "id_err", hname) + unc * answer.GetErr(eta, pt, "id_err", hname); };
+      answer.GetSF_id = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc, const std::string & hname){ msg( "!!!!!!!!! =>", answer.GetSF(eta, pt, "id_err", hname) ); return answer.GetSF(eta, pt, "id_err", hname) + unc * answer.GetErr(eta, pt, "id_err", hname); };
+      answer.GetSF_iso  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc, const std::string & hname){ return answer.GetSF(eta, pt, "iso_err", hname) + unc * answer.GetErr(eta, pt, "iso_err", hname); };
 
-      answer.GetSF_id_loose  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_id(pt, TMath::Abs(eta), unc, "NUM_LooseID_DEN_genTracks_pt_abseta");  };
+      answer.GetSF_id_loose  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { msg("!!!!!!\n\n\n\n!!???"); return answer.GetSF_id(pt, TMath::Abs(eta), unc, "NUM_LooseID_DEN_genTracks_pt_abseta");  };
       answer.GetSF_id_medium = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_id(pt, TMath::Abs(eta), unc, "NUM_MediumID_DEN_genTracks_pt_abseta"); };
       answer.GetSF_id_tight  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_id(pt, TMath::Abs(eta), unc, "NUM_TightID_DEN_genTracks_pt_abseta");  }; 
 
       answer.GetSF_iso_loose  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_iso(pt, TMath::Abs(eta), unc, "NUM_LooseRelIso_DEN_LooseID_pt_abseta"); };
-      // answer.GetSF_iso_medium = [](const Float_t & eta, const Float_t & pt, const int & unc) { return GetSF_iso(eta, pt, unc, "NUM_MediumID_DEN_genTracks_eta_pt") };
+   // answer.GetSF_iso_medium = [](const Float_t & eta, const Float_t & pt, const int & unc) { return GetSF_iso(eta, pt, unc, "NUM_MediumID_DEN_genTracks_eta_pt") };
       answer.GetSF_iso_tight  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_iso(pt, TMath::Abs(eta), unc, "NUM_TightRelIso_DEN_TightIDandIPCut_pt_abseta"); }; 
     }
   
