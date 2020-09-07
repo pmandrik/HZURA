@@ -17,14 +17,16 @@ namespace hzura {
       sf_bjets_btag.Set( 1.f );
       sf_pileup.Set( 1.f );
 
+      sf_PUJID_tag.Set( 1.f );
+      sf_PUJID_mistag.Set( 1.f );
+
       sf_FracRV.Set( 1.f ); 
       sf_LooseMvaSF.Set( 1.f ); 
       sf_PreselSF.Set( 1.f ); 
       sf_Trigger.Set( 1.f ); 
       sf_electronVetoSF.Set( 1.f );
 
-      combined_weights_names      = {"sf_photons", "sf_electrons", "sf_muons_id", "sf_muons_iso", "sf_ljets_id", "sf_ljets_btag", "sf_bjets_id", "sf_bjets_btag", "sf_pileup", 
-                                     "FracRV", "LooseMvaSF", "PreselSF", "Trigger",  "electronVetoSF"};
+      combined_weights_names      = {"sf_photons", "sf_electrons", "sf_muons_id", "sf_muons_iso", "sf_ljets_btag", "sf_bjets_btag", "sf_pileup", "sf_PUJID_tag", "sf_PUJID_mistag", "FracRV", "LooseMvaSF", "PreselSF", "Trigger",  "electronVetoSF"};
       combined_weight = 1.f;
       for(int i = 0, wn = combined_weights_names.size(); i < wn; i++){
         combined_weights_up.push_back( 1.f );
@@ -33,7 +35,7 @@ namespace hzura {
     }
 
     void CombineWeights(){
-      vector<Weight*>     weights = {&sf_photons, &sf_electrons, &sf_muons_id, &sf_muons_iso, &sf_ljets_id, &sf_ljets_btag, &sf_bjets_id, &sf_bjets_btag, &sf_pileup,
+      vector<Weight*>     weights = {&sf_photons, &sf_electrons, &sf_muons_id, &sf_muons_iso, &sf_ljets_btag, &sf_bjets_btag, &sf_pileup, &sf_PUJID_tag, &sf_PUJID_mistag,
                                      &sf_FracRV, &sf_LooseMvaSF, &sf_PreselSF, &sf_Trigger, &sf_electronVetoSF };
       combined_weight             = 1.f;
       for(int i = 0, wn = combined_weights_names.size(); i < wn; i++){
@@ -45,15 +47,24 @@ namespace hzura {
           w_up   *= weights[j]->c;
           w_down *= weights[j]->c;
         }
+        if(weights[i]->c < 0.0000000001){
+          combined_weights_up[i]   = 0;
+          combined_weights_down[i] = 0;
+          return;
+        }
         combined_weights_up[i]   = w_up   * weights[i]->u / weights[i]->c;
         combined_weights_down[i] = w_down * weights[i]->d / weights[i]->c;
       }
     }
 
-    void Print(){
+    std::vector<Weight*> GetWeights() {
+      std::vector<Weight*>     weights  = { &sf_photons, &sf_electrons, &sf_muons_id, &sf_muons_iso, &sf_ljets_btag, &sf_bjets_btag, &sf_pileup, &sf_PUJID_tag, &sf_PUJID_mistag, &sf_FracRV, &sf_LooseMvaSF, &sf_PreselSF, &sf_Trigger, &sf_electronVetoSF };
+      return weights;
+    }
+
+    void Print() {
       msg("Central weight", combined_weight);
-      vector<Weight*>     weights = {&sf_photons, &sf_electrons, &sf_muons_id, &sf_muons_iso, &sf_ljets_id, &sf_ljets_btag, &sf_bjets_id, &sf_bjets_btag, &sf_pileup,
-                                     &sf_FracRV, &sf_LooseMvaSF, &sf_PreselSF, &sf_Trigger, &sf_electronVetoSF };
+      vector<Weight*> weights = GetWeights();
       for(int i = 0, wn = combined_weights_names.size(); i < wn; i++){
         Weight* w = weights.at(i);
         msg( combined_weights_names[i], " +- ", combined_weights_up[i], combined_weights_down[i], " from ", w->c, " +- ", w->u, w->d );
@@ -69,6 +80,7 @@ namespace hzura {
     Weight sf_ljets_id, sf_ljets_btag;
     Weight sf_bjets_id, sf_bjets_btag;
     Weight sf_pileup;
+    Weight sf_PUJID_tag, sf_PUJID_mistag;
 
     Weight sf_FracRV, sf_LooseMvaSF, sf_PreselSF, sf_Trigger, sf_electronVetoSF;
   };
@@ -114,25 +126,31 @@ namespace hzura {
 
     // apply bjets SFs for ljets
     // ID + btag
+    // https://twiki.cern.ch/twiki/bin/view/CMS/BTagSFMethods
+    Weight eff(1., 1., 1.);
     for(const Jet & obj : selected_ljets){
       ews.sf_ljets_id;
-
-      msg("weight btag ", obj.sf_btag.c, obj.btag_eff, 1. - obj.sf_btag.c * obj.btag_eff);
-      msg("weight sfs ", obj.sf_btag.c, obj.sf_btag.u, obj.sf_btag.d);
-
       ews.sf_ljets_btag.c *= 1. - obj.sf_btag.c * obj.btag_eff; // obj.eff_btag.c;
       ews.sf_ljets_btag.u *= 1. - obj.sf_btag.u * obj.btag_eff; // obj.eff_btag.c;
       ews.sf_ljets_btag.d *= 1. - obj.sf_btag.d * obj.btag_eff; // obj.eff_btag.c;
+
+      eff.c *= 1. - obj.btag_eff; // obj.eff_btag.c;
+      eff.u *= 1. - obj.btag_eff; // obj.eff_btag.c;
+      eff.d *= 1. - obj.btag_eff; // obj.eff_btag.c;
     }
+    // ews.sf_ljets_btag.Print();
+    // eff.Print(); msg("===");
+    ews.sf_ljets_btag.Div( eff );
+    // ews.sf_ljets_btag.Print();
 
     // apply bjets SFs for bjets
     // ID + btag
     for(const Jet & obj : selected_bjets){
       ews.sf_bjets_id;
 
-      ews.sf_bjets_btag.c *= obj.sf_btag.c * obj.btag_eff; // obj.eff_btag.c;
-      ews.sf_bjets_btag.u *= obj.sf_btag.u * obj.btag_eff; // obj.eff_btag.c;
-      ews.sf_bjets_btag.d *= obj.sf_btag.d * obj.btag_eff; // obj.eff_btag.c;
+      ews.sf_bjets_btag.c *= obj.sf_btag.c; // obj.eff_btag.c;
+      ews.sf_bjets_btag.u *= obj.sf_btag.u; // obj.eff_btag.c;
+      ews.sf_bjets_btag.d *= obj.sf_btag.d; // obj.eff_btag.c;
     }
 
     // apply SFs from pileup NPV reweighting
@@ -140,6 +158,30 @@ namespace hzura {
     if( not hzura::glob::is_data ){
       nPVs = hzura::glob::event->GetEventTrueMCNumInteractions();
       pileup_sf_calculator.CalcSFs(nPVs, ews.sf_pileup.c, ews.sf_pileup.u, ews.sf_pileup.d);
+    }
+
+    // apply SFs from PUJID --- assume, only tagged jets are going to be used in the analyses !!! ---
+    for(const Jet & obj : selected_ljets){
+      if( obj.PUJID_tagged ){
+        ews.sf_PUJID_tag.c *= obj.sf_pujid.c;
+        ews.sf_PUJID_tag.u *= obj.sf_pujid.u;
+        ews.sf_PUJID_tag.d *= obj.sf_pujid.d;
+      } else {  
+        ews.sf_PUJID_mistag.c *= obj.sf_pujid.c;
+        ews.sf_PUJID_mistag.u *= obj.sf_pujid.u;
+        ews.sf_PUJID_mistag.d *= obj.sf_pujid.d;
+      }
+    }
+    for(const Jet & obj : selected_bjets){
+      if( obj.PUJID_tagged ){
+        ews.sf_PUJID_tag.c *= obj.sf_pujid.c;
+        ews.sf_PUJID_tag.u *= obj.sf_pujid.u;
+        ews.sf_PUJID_tag.d *= obj.sf_pujid.d;
+      } else {  
+        ews.sf_PUJID_mistag.c *= obj.sf_pujid.c;
+        ews.sf_PUJID_mistag.u *= obj.sf_pujid.u;
+        ews.sf_PUJID_mistag.d *= obj.sf_pujid.d;
+      }
     }
 
     // total and variations
@@ -276,8 +318,6 @@ namespace hzura {
   }
 
   void set_muon_sfs(hzura::Muon & muon, SFCalculator & muon_sf_calculator, const int & sf_type){
-    msg("set muon SFs ...");
-
     const Double_t & eta = muon.tlv.Eta();
     const Double_t & pt  = muon.tlv.Pt();
 
@@ -288,6 +328,9 @@ namespace hzura {
       muon.sf_iso.c  = muon_sf_calculator.GetSF_iso_loose(  eta, pt,  0 );
       muon.sf_iso.u  = muon_sf_calculator.GetSF_iso_loose(  eta, pt,  1 );
       muon.sf_iso.d  = muon_sf_calculator.GetSF_iso_loose(  eta, pt, -1 );
+
+      if( muon.sf_id.c < 0.9)
+        msg("Muon SF = ", muon.sf_id.c, eta, pt);
     } else 
     if( sf_type == id_names::tight ){
       muon.sf_id.c   = muon_sf_calculator.GetSF_id_tight(  eta, pt,  0 );
@@ -300,10 +343,70 @@ namespace hzura {
   }
 
   // JETS ================================================================================================
+  // PUJID ==--
+  void calc_pujid_variables(hzura::Jet & j, const PUJIDReader & pujid_reader){ // FIXME 2016 2017 2018
+     j.PUJID = hzura::glob::event->GetJetPUJID( j.index );
+     j.PUJID_tagged = hzura::glob::event->GetJetGetJetPt( j.index ) > 0.;
+
+    const Double_t & eta = j.tlv.Eta();
+    const Double_t & pt  = j.tlv.Pt();
+    // https://twiki.cern.ch/twiki/bin/view/CMS/PileupJetID#Working_points
+    if(hzura::glob::year == 2016){
+    }
+    else if(hzura::glob::year == 2017){
+      j.PUJID_isTight  = pujid_reader.GetID( j.PUJID, pt, eta, hzura::id_names::tight  );
+      j.PUJID_isMedium = pujid_reader.GetID( j.PUJID, pt, eta, hzura::id_names::medium );
+      j.PUJID_isLoose  = pujid_reader.GetID( j.PUJID, pt, eta, hzura::id_names::loose  );
+    }
+    else if(hzura::glob::year == 2018){
+    }
+  }
+
+  void set_pujid_sfs(hzura::Jet & j, const PUJIDReader & pujid_reader, const int & wp){ // FIXME 2016 2017 2018
+    const Double_t & eta = j.tlv.Eta();
+    const Double_t & pt  = j.tlv.Pt();
+    if( pt > 50 ){
+      j.sf_pujid.Set(1.f);
+      return;
+    }
+    if( j.PUJID_tagged ){
+      if( wp == id_names::loose ){
+        j.sf_pujid.d = pujid_reader.GetSF_eff_loose(eta, pt, -1);
+        j.sf_pujid.c = pujid_reader.GetSF_eff_loose(eta, pt,  0);
+        j.sf_pujid.u = pujid_reader.GetSF_eff_loose(eta, pt,  1);
+      }
+      if( wp == id_names::medium ){
+        j.sf_pujid.d = pujid_reader.GetSF_eff_medium(eta, pt, -1);
+        j.sf_pujid.c = pujid_reader.GetSF_eff_medium(eta, pt,  0);
+        j.sf_pujid.u = pujid_reader.GetSF_eff_medium(eta, pt,  1);
+      }
+      if( wp == id_names::tight ){
+        j.sf_pujid.d = pujid_reader.GetSF_eff_tight(eta, pt, -1);
+        j.sf_pujid.c = pujid_reader.GetSF_eff_tight(eta, pt,  0);
+        j.sf_pujid.u = pujid_reader.GetSF_eff_tight(eta, pt,  1);
+      }
+    } else {
+      if( wp == id_names::loose ){
+        j.sf_pujid.d = pujid_reader.GetSF_mistag_loose(eta, pt, -1);
+        j.sf_pujid.c = pujid_reader.GetSF_mistag_loose(eta, pt,  0);
+        j.sf_pujid.u = pujid_reader.GetSF_mistag_loose(eta, pt,  1);
+      }
+      if( wp == id_names::medium ){
+        j.sf_pujid.d = pujid_reader.GetSF_mistag_medium(eta, pt, -1);
+        j.sf_pujid.c = pujid_reader.GetSF_mistag_medium(eta, pt,  0);
+        j.sf_pujid.u = pujid_reader.GetSF_mistag_medium(eta, pt,  1);
+      }
+      if( wp == id_names::tight ){
+        j.sf_pujid.d = pujid_reader.GetSF_mistag_tight(eta, pt, -1);
+        j.sf_pujid.c = pujid_reader.GetSF_mistag_tight(eta, pt,  0);
+        j.sf_pujid.u = pujid_reader.GetSF_mistag_tight(eta, pt,  1);
+      }
+    }
+  }
+
   // btags ==--
   void calc_btag_variables(hzura::Jet & j){ // FIXME 2016 2017 2018
     const int & i = j.index;
-
     // b-tagging
     // https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookMiniAOD2017#B_tagging
     // https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation102X

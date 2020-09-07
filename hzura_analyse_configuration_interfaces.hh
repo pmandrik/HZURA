@@ -90,7 +90,7 @@ namespace hzura {
   // https://twiki.cern.ch/twiki/bin/viewauth/CMS/EgammaIDRecipesRun2#Photon_efficiencies_and_scale_fa
   class SFFileReader {
     public : 
-      SFFileReader(const std::string input_file, double w = 1){
+      SFFileReader(const std::string input_file, double w = 1, bool msg_if_outside_range_ = true, float value_if_outside_range_ = 0){
         pm::msg( "hzura::SFReader process", input_file );
         weight = w;
         std::unique_ptr<TFile> file( TFile::Open(input_file.c_str()) );
@@ -114,6 +114,9 @@ namespace hzura {
         }
       
         file->Close();
+
+        msg_if_outside_range = msg_if_outside_range_;
+        value_if_outside_range = value_if_outside_range_;
       }
 
       Float_t GetSF(const Float_t & eta, const Float_t & pt, const std::string & hist_name) const {
@@ -125,6 +128,14 @@ namespace hzura {
           return -1;
         }
         TH2* hist = it_hist->second;
+        if( eta < hist->GetXaxis()->GetXmin() or eta > hist->GetXaxis()->GetXmax() ){
+          if(msg_if_outside_range) msg_err("hzura::SFReader.GetSF: point outside range ", "\"" + hist_name + "\",", eta, "[" , hist->GetXaxis()->GetXmin(), hist->GetXaxis()->GetXmax(), "]");
+          return value_if_outside_range;
+        }
+        if( pt < hist->GetYaxis()->GetXmin() or pt > hist->GetYaxis()->GetXmax() ){
+          if(msg_if_outside_range) if(msg_if_outside_range)msg_err("hzura::SFReader.GetSF: point outside range ", "\"" + hist_name + "\",", pt, "[" , hist->GetYaxis()->GetXmin(), hist->GetYaxis()->GetXmax(), "]");
+          return value_if_outside_range;
+        }
         return weight * hist->GetBinContent( hist->FindBin(eta, pt) );
       }
 
@@ -137,10 +148,13 @@ namespace hzura {
           return -1;
         }
         TH2* hist = it_hist->second;
+        // FIXME outside the area ???
         return weight * hist->GetBinError( hist->FindBin(eta, pt) );
       }
 
-      double weight;
+      bool msg_if_outside_range;
+      Float_t value_if_outside_range;
+      Float_t weight;
       std::map<std::string, TH2*> names_x_hists;
   };
 
@@ -179,15 +193,15 @@ namespace hzura {
       return it_reader->second->GetErr(eta, pt, hist_name);
     }
 
-    Float_t GetSF_loose(const Float_t & eta, const Float_t & pt, const int & unc){
+    Float_t GetSF_loose(const Float_t & eta, const Float_t & pt, const int & unc) const {
       return GetSF(eta, pt, fname_loose, hname_loose) + unc * GetErr(eta, pt, fname_loose, hname_loose);
     }
 
-    Float_t GetSF_medium(const Float_t & eta, const Float_t & pt, const int & unc){
+    Float_t GetSF_medium(const Float_t & eta, const Float_t & pt, const int & unc) const {
       return GetSF(eta, pt, fname_medium, hname_medium) + unc * GetErr(eta, pt, fname_medium, hname_medium);
     }
 
-    Float_t GetSF_tight(const Float_t & eta, const Float_t & pt, const int & unc){
+    Float_t GetSF_tight(const Float_t & eta, const Float_t & pt, const int & unc) const {
       return GetSF(eta, pt, fname_tight, hname_tight) + unc * GetErr(eta, pt, fname_tight, hname_tight);
     }
 
@@ -198,6 +212,45 @@ namespace hzura {
     std::function<Float_t (const Float_t &, const Float_t &, const int &, const std::string &)> GetSF_iso, GetSF_id;
     std::function<Float_t (const Float_t &, const Float_t &, const int &)> GetSF_id_loose, GetSF_id_medium, GetSF_id_tight;
     std::function<Float_t (const Float_t &, const Float_t &, const int &)> GetSF_iso_loose, GetSF_iso_medium, GetSF_iso_tight;
+  };
+
+  // PUJID SF & WP ===============================================================================================
+  // https://twiki.cern.ch/twiki/bin/view/CMS/PileupJetID#Working_points
+  class PUJIDReader : public SFCalculator{
+    public:
+    PUJIDReader(){}
+
+    bool GetID(const double PUJID, const double & pt, double eta, const int & wp) const {
+      eta = TMath::Abs( eta );
+
+      int pt_index = 0;
+      for( ; pt_index < pt_range.size(); pt_index++){
+        if( pt > pt_range[ pt_index ] ) continue;
+        break;
+      }
+
+      int eta_index = 0;
+      for( ; eta_index < eta_range.size(); eta_index++){
+        if( eta > eta_range[ eta_index ] ) continue;
+        break;
+      }
+
+      if( pt_index >= pt_range.size() or eta_index >= eta_range.size() ) return true;
+      if( wp == hzura::id_names::loose )  return (PUJID > loose[pt_index][eta_index]);
+      if( wp == hzura::id_names::medium ) return (PUJID > medium[pt_index][eta_index]);
+      if( wp == hzura::id_names::tight )  return (PUJID > tight[pt_index][eta_index]);
+      return true;
+    }
+
+    Float_t GetSF_alt(const Float_t & eta, const Float_t & pt, const int & unc, std::string file_name, std::string hist_name, std::string file_err_name, std::string hist_err_name) const {
+      return GetSF(eta, pt, file_name, hist_name) + unc * GetSF(eta, pt, file_err_name, hist_err_name);
+    }
+
+    std::function<Float_t (const Float_t &, const Float_t &, const int &)> GetSF_eff_loose,    GetSF_eff_medium,    GetSF_eff_tight;
+    std::function<Float_t (const Float_t &, const Float_t &, const int &)> GetSF_mistag_loose, GetSF_mistag_medium, GetSF_mistag_tight;
+
+    std::vector< std::vector<double> > loose, medium, tight;
+    std::vector<double> eta_range, pt_range;
   };
 
   // PileUp reweighting reader ===============================================================================================
@@ -227,9 +280,29 @@ namespace hzura {
 
       Double_t x, y;
       puWgtGr->GetPoint( puWgtGr->GetN()-1, x, y );
-      max_range_x = x;
-      
+      max_range_x = x + 0.5; //FIXME
+      puWgtGr->GetPoint( 0, x, y );
+      min_range_x = x - 0.5; //FIXME
       return true;
+    }
+
+    Float_t CalcWeight(const Int_t npv) const {
+      if( npv > max_range_x ){
+        msg_err("hzura::PileUpSFReader.CalcSFs: number of MC PVs", npv, "is greater than range of reweighting histogram,", max_range_x);
+        return 0;
+      }
+      if( npv < min_range_x ){
+        msg_err("hzura::PileUpSFReader.CalcSFs: number of MC PVs", npv, "is smaller than range of reweighting histogram,", min_range_x);
+        return 0;
+      }
+
+      Float_t sf      = puWgtGr  ->Eval( npv );
+
+      if(sf < 0){
+        msg_err("hzura::PileUpSFReader.CalcSFs: negative SF", sf, "for NPVs = ", npv);
+        return 0;
+      }
+      return sf;
     }
 
     void CalcSFs(const Int_t npv, Float_t & sf, Float_t & sf_up, Float_t & sf_down) const {
@@ -241,13 +314,25 @@ namespace hzura {
         msg_err("hzura::PileUpSFReader.CalcSFs: number of MC PVs", npv, "is greater than range of reweighting histogram,", max_range_x);
         return;
       }
+      if( npv < min_range_x ){
+        msg_err("hzura::PileUpSFReader.CalcSFs: number of MC PVs", npv, "is smaller than range of reweighting histogram,", min_range_x);
+        return;
+      }
 
       sf      = puWgtGr  ->Eval( npv );
       sf_up   = puWgtUpGr->Eval( npv );
       sf_down = puWgtDoGr->Eval( npv );
+
+      if(sf < 0){
+        msg_err("hzura::PileUpSFReader.CalcSFs: negative SF", sf, "for NPVs = ", npv);
+        sf = 0;
+        sf_up = 0;
+        sf_down = 0;
+        return;
+      }
     }
 
-    Double_t max_range_x;
+    Double_t max_range_x, min_range_x;
     TGraph *puWgtGr, *puWgtDoGr, *puWgtUpGr;
   };
 
@@ -283,6 +368,10 @@ namespace hzura {
 
     void RemakeJet(hzura::Jet & jet, bool up=true){
       if(not active_unc) return;
+      if( TMath::Abs(jet.tlv.Eta()) > 5.1 ){
+        msg_err( "hzura::JecReader.GetJetCorrectionUncertainty.RemakeJet(): jet p4 outside JEC Tool range", jet.tlv.Pt(), jet.tlv.Eta() );
+        return;
+      }
       if( up ){
         active_unc->setJetPt( jet.tlv.Pt() );
         active_unc->setJetEta( jet.tlv.Eta() );

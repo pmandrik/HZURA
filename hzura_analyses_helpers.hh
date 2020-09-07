@@ -289,12 +289,21 @@ namespace hzura {
       EventCfg cfg_METDown = copy_cfg( cfg, "UnclusteredMETDown" );
       cfg_METDown.MET_SYS  = "UnclusteredEnDown";
 
+      EventCfg cfg_NO_MET_XY = copy_cfg( cfg, "NoMETXYcorr" );
+      cfg_NO_MET_XY.MET_XYCORR  = false;
+
+      EventCfg cfg_PUJID = copy_cfg( cfg, "PUJID_none" );
+      cfg_PUJID.JET_PUJID_CUT  = hzura::id_names::none;
+
       analyses_configs.push_back( cfg_JERUp );
       analyses_configs.push_back( cfg_JERDown );
       analyses_configs.push_back( cfg_JECUp );
       analyses_configs.push_back( cfg_JECDown );
       analyses_configs.push_back( cfg_METUp );
       analyses_configs.push_back( cfg_METDown );
+
+      // analyses_configs.push_back( cfg_NO_MET_XY );
+      analyses_configs.push_back( cfg_PUJID );
     }
 
     void add_systematic_cfgs_flashgg(const EventCfg & cfg, std::vector<hzura::EventCfg> & analyses_configs){

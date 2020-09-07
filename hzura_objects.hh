@@ -7,10 +7,10 @@
 namespace hzura {
 
   struct Weight {
-    Weight(){
-      c = 0.f;
-      u = 0.f;
-      d = 0.f;
+    Weight(double d_ = 0., double c_=0., double u_=0.){
+      c = c_;
+      u = u_;
+      d = d_;
     }
 
     void Set(const Float_t & valx, const Float_t & valy, const Float_t & valz){
@@ -30,6 +30,14 @@ namespace hzura {
       u *= item.u;
       d *= item.d;
     }
+
+    void Div(const Weight & item){
+      c /= item.c;
+      u /= item.u;
+      d /= item.d;
+    }
+
+    void Print(){ msg(d,c,u); }
 
     Float_t c, u, d;
   };
@@ -116,11 +124,13 @@ namespace hzura {
 
     bool btag_DeepCSV_isLoose, btag_DeepCSV_isMedium, btag_DeepCSV_isTight;
     bool btag_DeepFlavour_isLoose, btag_DeepFlavour_isMedium, btag_DeepFlavour_isTight;
+    Float_t PUJID;
+    bool PUJID_tagged, PUJID_isTight, PUJID_isMedium, PUJID_isLoose;
 
     Float_t btag_DeepCSV_val, btag_DeepFlavour_val;
     Int_t hadronFlavour;
 
-    Weight sf_btag, sf_id;
+    Weight sf_btag, sf_id, sf_pujid;
     Double_t btag_eff;
   };
 

@@ -68,6 +68,7 @@ namespace hzura {
     // JETS OPTIONS =- -= =- -= =- -= =- -=
     Float_t JET_PT_CUT;
     Float_t JET_ETA_CUT;
+    int JET_PUJID_CUT;                         // id_names::none id_names::loose id_names::medium id_names::tight
     int JET_ID_CUT;                            // id_names::loose id_names::medium id_names::tight
     std::string JET_BTAGGER;                   // "DeepCSV"
     int JET_BTAGGER_ID;                        // id_names::loose id_names::medium id_names::tight
@@ -111,6 +112,7 @@ namespace hzura {
       JET_PT_CUT = 0;
       JET_ETA_CUT = 9999;
       JET_ID_CUT = id_names::none;
+      JET_PUJID_CUT = id_names::none;
       JET_BTAGGER = "DeepCSV";
       JET_BTAGGER_ID = id_names::none;
       JET_JER = "central";
@@ -174,6 +176,7 @@ namespace hzura {
       if( JET_JER != other.JET_JER ) return false;
       if( JET_JEC_TYPE != other.JET_JEC_TYPE ) return false;
       if( JET_JEC_DIR != other.JET_JEC_DIR ) return false;
+      if( JET_PUJID_CUT!= other.JET_PUJID_CUT ) return false;
       return true;
     }
 
@@ -185,6 +188,17 @@ def make_comp():
   print "return true;"
     */
 
+    map<std::string, TH1*> hists;
+    void SetHist(const std::string & hist_name, TH1* hist){ hists[ hist_name ] = hist; }
+    TH1* GetHist(const std::string hist_name) const {
+      auto it = hists.find( hist_name );
+      if( it == hists.end() ){
+        msg("hzura::ObjectPreselector.GetHist(): can't find histogram", hist_name, "in config", name, "; available hists:");
+        for(auto iter = hists.begin(); iter != hists.end(); ++it) msg( it->first );
+        return nullptr;
+      }
+      return it->second;
+    }
   };
 
   EventCfg copy_cfg(const EventCfg & other, std::string name){

@@ -14,8 +14,9 @@ namespace hzura {
       btag_sf_calculator_b   = get_btag_sf_reader("tight", "b");
       btag_sf_calculator_c   = get_btag_sf_reader("tight", "c");
       btag_sf_calculator_l   = get_btag_sf_reader("tight", "l");
-      pileup_sf_calculator = get_pileup_sf_reader();
-      jec_unc_calculator   = get_jec_uncertanties();
+      pileup_sf_calculator   = get_pileup_sf_reader();
+      jec_unc_calculator     = get_jec_uncertanties();
+      pujid_reader           = get_pujid_reader();
 
       verbose_lvl = 1; // FIXME
     }
@@ -27,6 +28,7 @@ namespace hzura {
     PileUpSFReader pileup_sf_calculator ;
     JecReader jec_unc_calculator        ;
     BTagEffReader btag_eff_reader       ;
+    PUJIDReader   pujid_reader          ;
     //Events * event;
     ReaderGRINDER * event;
     
@@ -161,17 +163,17 @@ namespace hzura {
         if( event->GetMuonPt(i) < cfg.MUON_PT_CUT ) continue;
         if( TMath::Abs( event->GetMuonEta(i) ) > cfg.MUON_ETA_CUT ) continue;
 
-        if( cfg.MUON_ISOID_CUT == hzura::id_names::loose  and event->GetMuonIsLoose(i)  ) continue;
-        if( cfg.MUON_ISOID_CUT == hzura::id_names::medium and event->GetMuonIsMedium(i) ) continue;
-        if( cfg.MUON_ISOID_CUT == hzura::id_names::tight  and event->GetMuonIsTight(i)  ) continue;
+        if( cfg.MUON_ISOID_CUT == hzura::id_names::loose  and not event->GetMuonIsLoose(i)  ) continue;
+        if( cfg.MUON_ISOID_CUT == hzura::id_names::medium and not event->GetMuonIsMedium(i) ) continue;
+        if( cfg.MUON_ISOID_CUT == hzura::id_names::tight  and not event->GetMuonIsTight(i)  ) continue;
 
         muon_candidate.Init( i );
 
         // calculate muon ISO working points
         hzura::calc_muon_iso( muon_candidate );
-        if( cfg.MUON_ISOID_CUT == hzura::id_names::loose  and muon_candidate.isLooseISO )  continue;
-        if( cfg.MUON_ISOID_CUT == hzura::id_names::medium and muon_candidate.isMediumISO ) continue;
-        if( cfg.MUON_ISOID_CUT == hzura::id_names::tight  and muon_candidate.isTightISO )  continue;
+        if( cfg.MUON_ISOID_CUT == hzura::id_names::loose  and not muon_candidate.isLooseISO )  continue;
+        if( cfg.MUON_ISOID_CUT == hzura::id_names::medium and not muon_candidate.isMediumISO ) continue;
+        if( cfg.MUON_ISOID_CUT == hzura::id_names::tight  and not muon_candidate.isTightISO )  continue;
 
         if(cfg.FLASHGG_DIPHOTON_INDEX >= 0 and event->GetMuonDiphotonsVeto( i ).at(cfg.FLASHGG_DIPHOTON_INDEX) ) continue;
 
@@ -204,16 +206,30 @@ namespace hzura {
       jec_unc_calculator.SetActiveJetCorrectionUncertainty( cfg.JET_JEC_TYPE );
       for(int i = 0, i_max = event->GetJetsN(); i < i_max; i++){
         jet_candidate.Init( i );
+        // cout << i << " " << jet_candidate.tlv.Pt() << " " << jet_candidate.tlv.Eta() << endl;
+        if( TMath::Abs(jet_candidate.tlv.Eta()) > 5.1 ) cout << i << " " << jet_candidate.tlv.Pt() << " " << jet_candidate.tlv.Eta() << endl;
+
         // Evaluate JER smearing after nominal JEC is applied but before systematic variaion in JEC - only for MC FIXME
         if( not hzura::glob::is_data ) apply_jer_smearing( jet_candidate, cfg.JET_JER ); // such as "central"
+        if( TMath::Abs(jet_candidate.tlv.Eta()) > 5.1 ) cout << i << " JER " << jet_candidate.tlv.Pt() << " " << jet_candidate.tlv.Eta() << endl;
 
         // Remake jets due to JEC systematic variaion
         if( not hzura::glob::is_data ) jec_unc_calculator.RemakeJet( jet_candidate, cfg.JET_JEC_DIR ); // worked in case if SetActiveJetCorrectionUncertainty called before
+        // cout << i << " JEC " << jet_candidate.tlv.Pt() << " " << jet_candidate.tlv.Eta() << endl;
 
         // basic selections
         if( jet_candidate.tlv.Pt() < cfg.JET_PT_CUT ) continue;
         if( TMath::Abs( jet_candidate.tlv.Eta() ) > cfg.JET_ETA_CUT ) continue;
         if( cfg.JET_ID_CUT == hzura::id_names::tight  and not event->GetJetIsTight(i) )  continue; // only tight jets are available
+
+        // PUJID
+        if( cfg.JET_PUJID_CUT != hzura::id_names::none ){
+          hzura::calc_pujid_variables( jet_candidate, this->pujid_reader );
+          if(cfg.JET_PUJID_CUT == hzura::id_names::loose and not jet_candidate.PUJID_isLoose ) continue;
+          if(cfg.JET_PUJID_CUT == hzura::id_names::medium and not jet_candidate.PUJID_isMedium ) continue;
+          if(cfg.JET_PUJID_CUT == hzura::id_names::tight and not jet_candidate.PUJID_isTight ) continue;
+          if( not hzura::glob::is_data ) hzura::set_pujid_sfs( jet_candidate, this->pujid_reader, cfg.JET_PUJID_CUT );
+        } else jet_candidate.sf_pujid.Set(1.f);
 
         // split based on btagging decigion
         btagged = false;
@@ -221,15 +237,15 @@ namespace hzura {
 
         if( cfg.JET_BTAGGER == "DeepCSV" ){
           hzura::set_jet_btag_sfs( jet_candidate, btag_sf_calculator_b, btag_sf_calculator_c, btag_sf_calculator_l ); 
-          if(cfg.JET_BTAGGER_ID == hzura::id_names::loose and jet_candidate.btag_DeepCSV_isLoose )   btagged = true;
+          if(cfg.JET_BTAGGER_ID == hzura::id_names::loose and  jet_candidate.btag_DeepCSV_isLoose )   btagged = true;
           if(cfg.JET_BTAGGER_ID == hzura::id_names::medium and jet_candidate.btag_DeepCSV_isMedium ) btagged = true;
-          if(cfg.JET_BTAGGER_ID == hzura::id_names::tight and jet_candidate.btag_DeepCSV_isTight )   btagged = true;
+          if(cfg.JET_BTAGGER_ID == hzura::id_names::tight and  jet_candidate.btag_DeepCSV_isTight )   btagged = true;
         }
         else if( cfg.JET_BTAGGER == "DeepFlavour" ){
           hzura::set_jet_btag_sfs( jet_candidate, btag_sf_calculator_b, btag_sf_calculator_c, btag_sf_calculator_l ); 
-          if(cfg.JET_BTAGGER_ID == hzura::id_names::loose and jet_candidate.btag_DeepFlavour_isLoose )   btagged = true;
+          if(cfg.JET_BTAGGER_ID == hzura::id_names::loose and  jet_candidate.btag_DeepFlavour_isLoose )   btagged = true;
           if(cfg.JET_BTAGGER_ID == hzura::id_names::medium and jet_candidate.btag_DeepFlavour_isMedium ) btagged = true;
-          if(cfg.JET_BTAGGER_ID == hzura::id_names::tight and jet_candidate.btag_DeepFlavour_isTight )   btagged = true;
+          if(cfg.JET_BTAGGER_ID == hzura::id_names::tight and  jet_candidate.btag_DeepFlavour_isTight )   btagged = true;
         }
 
         if( btagged ) hzura_event.bjet_candidates->emplace_back( jet_candidate );
@@ -303,11 +319,14 @@ namespace hzura {
         else apply_met_systematic_variation( event_i.met, cfg_i.MET_SYS );
 
         // apply met phi correction
+        // https://twiki.cern.ch/twiki/bin/viewauth/CMS/MissingETRun2Corrections#xy_Shift_Correction_MET_phi_modu
         // METXYCorr_Met_MetPhi(double uncormet, double uncormet_phi, int runnb, int year, bool isMC, int npv)
         if( cfg_i.MET_XYCORR ){
-          std::pair<double,double> corr_pt_phi = METXYCorr_Met_MetPhi( event_i.met.pt, event_i.met.phi, hzura::glob::event->GetEventRun(), hzura::glob::year, hzura::glob::is_data, hzura::glob::event->GetEventRecoNumInteractions() );
+          // msg("pre-corr", event_i.met.pt, event_i.met.phi, hzura::glob::event->GetEventRecoNumInteractions() );
+          std::pair<double,double> corr_pt_phi = METXYCorr_Met_MetPhi( event_i.met.pt, event_i.met.phi, hzura::glob::event->GetEventRun(), hzura::glob::year, not hzura::glob::is_data, hzura::glob::event->GetEventRecoNumInteractions() );
           event_i.met.pt  = corr_pt_phi.first;
           event_i.met.phi = corr_pt_phi.second;
+          // msg("post-corr", event_i.met.pt, event_i.met.phi );
         }
 
         answer.emplace_back( event_i );
@@ -358,7 +377,12 @@ namespace hzura {
     for(int i = 0; i < 6; i++){
       tots.push_back( new TH2D(("tot_" + to_string(i)).c_str(), ("tot_" + to_string(i)).c_str(), N_bins_pt, pt_min, pt_max, N_bins_eta, eta_min, eta_max) );
       tags.push_back( new TH2D(("tag_" + to_string(i)).c_str(), ("tag_" + to_string(i)).c_str(), N_bins_pt, pt_min, pt_max, N_bins_eta, eta_min, eta_max) );
-      effs.push_back( new TH2D(("eff_" + to_string(i)).c_str(), ("eff_" + to_string(i)).c_str(), N_bins_pt, pt_min, pt_max, N_bins_eta, eta_min, eta_max) );
+      TH2D * eff_host = new TH2D(("eff_" + to_string(i)).c_str(), ("eff_" + to_string(i)).c_str(), N_bins_pt, pt_min, pt_max, N_bins_eta, eta_min, eta_max);
+      eff_host->SetTitle( ("b-tagging efficiency for hadronFlavour = " + to_string(i)).c_str() );
+      eff_host->GetXaxis()->SetTitle("p_{T} [GeV]");
+      eff_host->GetYaxis()->SetTitle("#eta");
+      eff_host->SetMarkerSize(2.0);
+      effs.push_back( eff_host );
     }
 
     hzura::glob::event->file->cd();
@@ -401,8 +425,12 @@ namespace hzura {
         for(int y = 0; y <= tot->GetNbinsY()+1; y++){
           double tot_value = tot->GetBinContent( x, y );
           double tag_value = tag->GetBinContent( x, y );
-          if( tot_value < 0.000000000001 ) { tag_value = 0; tot_value = 1; };
-          eff->SetBinContent( x, y, tag_value / tot_value );
+          double err2 = 0;
+          if( tot_value < 0.000000000001 ) { tag_value = 0; tot_value = 1; }
+          else err2 = 1./tag_value + 1./tot_value;
+          double val = tag_value / tot_value;
+          eff->SetBinContent( x, y, val );
+          eff->SetBinError(x, y, TMath::Sqrt(err2) / val );
         }
       }
     }
