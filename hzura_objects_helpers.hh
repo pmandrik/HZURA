@@ -74,7 +74,7 @@ namespace hzura {
     Double_t             combined_weight;
     vector<Double_t>     combined_weights_up;
     vector<Double_t>     combined_weights_down;
-    vector<std::string> combined_weights_names;
+    vector<std::string>  combined_weights_names;
 
     Weight sf_photons, sf_electrons, sf_muons_id, sf_muons_iso;
     Weight sf_ljets_id, sf_ljets_btag;
@@ -448,6 +448,11 @@ namespace hzura {
 
     // pfDeepFlavourJetTags:probb + pfDeepFlavourJetTags:probbb + pfDeepFlavourJetTags:problepb
     j.btag_DeepFlavour_val = hzura::glob::event->GetJetPfDeepFlavourJetTagsProbb(i) + hzura::glob::event->GetJetPfDeepFlavourJetTagsProbbb(i) + hzura::glob::event->GetJetPfDeepFlavourJetTagsProblepb(i);
+    if( j.btag_DeepFlavour_val < 0. ) {
+      msg("Negative Deep Flavour Jet Tag value = ", j.btag_DeepFlavour_val, hzura::glob::event->GetJetPfDeepFlavourJetTagsProbb(i), hzura::glob::event->GetJetPfDeepFlavourJetTagsProbbb(i), hzura::glob::event->GetJetPfDeepFlavourJetTagsProblepb(i) );
+      j.btag_DeepFlavour_val = -0.01;
+    }
+    
     if(hzura::glob::year == 2016){
       j.btag_DeepFlavour_isLoose  = (j.btag_DeepFlavour_val > 0.0494) ? true : false;
       j.btag_DeepFlavour_isMedium = (j.btag_DeepFlavour_val > 0.2770) ? true : false;

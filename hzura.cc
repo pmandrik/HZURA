@@ -22,7 +22,10 @@ using namespace pm;
 #include "external/JERC/JetCorrectionUncertainty.cpp"
 #include "external/JERC/JetCorrectorParameters.cpp"
 
-#include "/afs/cern.ch/work/p/pmandrik/dihiggs/4_slashgg/CMSSW_10_5_0/src/Analysis/GRINDER/interface/Event.hh"
+// #define GRINDER_PATH "/afs/cern.ch/work/p/pmandrik/dihiggs/4_slashgg/CMSSW_10_5_0/src/Analysis/GRINDER/interface/Event.hh"
+#define GRINDER_PATH "/afs/cern.ch/work/p/pmandrik/dihiggs/5_slashgg_10_6_8/CMSSW_10_6_8/src/Analysis/GRINDER/interface/Event.hh"
+
+#include GRINDER_PATH
 
 class ReaderGRINDER :  public PmMsg {
   public:
@@ -35,11 +38,12 @@ class ReaderGRINDER :  public PmMsg {
 
       msg( "ReaderGRINDER ... ", t_Events, t_EventsMeta );
 
-      gInterpreter->GenerateDictionary("std::vector<grinder::Electron>", "vector;/afs/cern.ch/work/p/pmandrik/dihiggs/4_slashgg/CMSSW_10_5_0/src/Analysis/GRINDER/interface/Event.hh");
-      gInterpreter->GenerateDictionary("std::vector<grinder::Muon>",     "vector;/afs/cern.ch/work/p/pmandrik/dihiggs/4_slashgg/CMSSW_10_5_0/src/Analysis/GRINDER/interface/Event.hh");
-      gInterpreter->GenerateDictionary("std::vector<grinder::Photon>",   "vector;/afs/cern.ch/work/p/pmandrik/dihiggs/4_slashgg/CMSSW_10_5_0/src/Analysis/GRINDER/interface/Event.hh");
-      gInterpreter->GenerateDictionary("std::vector<grinder::Jet>",      "vector;/afs/cern.ch/work/p/pmandrik/dihiggs/4_slashgg/CMSSW_10_5_0/src/Analysis/GRINDER/interface/Event.hh");
-      gInterpreter->GenerateDictionary("std::vector<grinder::GenParticle>",      "vector;/afs/cern.ch/work/p/pmandrik/dihiggs/4_slashgg/CMSSW_10_5_0/src/Analysis/GRINDER/interface/Event.hh");
+      string gp = GRINDER_PATH;
+      gInterpreter->GenerateDictionary( "std::vector<grinder::Electron>",    ("vector;" + gp).c_str() );
+      gInterpreter->GenerateDictionary( "std::vector<grinder::Muon>",        ("vector;" + gp).c_str() );
+      gInterpreter->GenerateDictionary( "std::vector<grinder::Photon>",      ("vector;" + gp).c_str() );
+      gInterpreter->GenerateDictionary( "std::vector<grinder::Jet>",         ("vector;" + gp).c_str() );
+      gInterpreter->GenerateDictionary( "std::vector<grinder::GenParticle>", ("vector;" + gp).c_str() );
 
       electrons = 0;
       muons     = 0;
@@ -236,6 +240,7 @@ class ReaderGRINDER :  public PmMsg {
     UInt_t GetEventLumi (void) const { return  event->lumi ; }
     ULong64_t GetEventEvent (void) const { return  event->event ; }
     UShort_t GetEventBunchCrossing (void) const { return  event->bunchCrossing ; }
+    Float_t GetDiphotonMva() const { return event->diphoton_mva ; }
     Float_t GetEventAngularPtDensity (void) const { return  event->angular_pt_density ; }
     Float_t GetEventAngularPtDensityCentral (void) const { return  event->angular_pt_density_central ; }
     Float_t GetEventWeight (void) const { return  event->weight ; }
@@ -268,49 +273,7 @@ class ReaderGRINDER :  public PmMsg {
 #include <hzura_analyse_configuration_helpers.hh>
 #include <hzura_objects_helpers.hh>
 #include <hzura_objects_preselectors.hh>
-#include <hzura_output.hh>
 using namespace hzura;
-
-// GRIDNER interface
-#include <Events.C>
-#include <EventsMeta.C>
-
-class Reader :  public PmMsg {
-  public:
-  Reader(string input_file){
-    MSG_INFO( "hzura::Reader(): process ", input_file, "..." );
-    file = TFile::Open( input_file.c_str()  );
-    // gDirectory->cd("grinderMain");
-
-    TTree * t1 = (TTree*) gDirectory->Get("Events");
-    TTree * t2 = (TTree*) gDirectory->Get("EventsMeta");
-
-    event  = new Events( t1 );
-    meta   = new EventsMeta( t2 );
-
-    Long64_t entrys = meta->fChain->GetEntriesFast();
-    Long64_t entry  = 0;
-
-    n_events_total = 0;
-    for(;entry < entrys; entry++){
-      meta->GetEntry(entry);
-      n_events_total += meta->numEvents;
-    }
-    meta->GetEntry( 0 );
-  }
-
-  ~Reader(){
-    delete meta;
-    delete event;
-    file->Close();
-  }
-
-    Int_t n_events_total;
-
-    Events     * event;
-    EventsMeta * meta;
-    TFile * file;
-};
 
 int main(int argc, char *argv[]) { // FIXME
   if( argc < 4 ){
@@ -442,8 +405,8 @@ int main(int argc, char *argv[]) { // FIXME
   pm::parce_path(input_file, path, process_name, ext);
   msg(input_file, path, process_name, ext );
   if(not hzura::glob::is_data){
-    if(RUNMODE.find("BTAG") != std::string::npos) calc_btagging_efficiency( "btag_effs_" + process_name + ".root", cfg, preselector.pileup_sf_calculator, 1, cfg.JET_PT_CUT, 2000, 5, -3, 3 ); 
-    preselector.btag_eff_reader = BTagEffReader( "btag_effs_" + process_name + ".root" );
+    if(RUNMODE.find("BTAG") != std::string::npos) calc_btagging_efficiency( "data/btag/btag_effs_" + process_name + ".root", cfg, preselector.pileup_sf_calculator, 1, cfg.JET_PT_CUT, 2000, 5, -3, 3 ); 
+    preselector.btag_eff_reader = BTagEffReader( "data/btag/btag_effs_" + process_name + ".root" );
   }
   // return 0;
 
@@ -470,19 +433,19 @@ int main(int argc, char *argv[]) { // FIXME
       //msg( "process cfg: ", config.name );
 
       // MC WEIGHTS
-      double event_weight     = glob::event->GetEventWeight() ;
+      double flashgg_event_weight     = glob::event->GetEventWeight() ;
       double originalXWGTUP   = glob::event->GetEventOriginalXWGTUP(); 
       double flashgg_puweight = glob::event->GetEventFlashggPuweight() ;
       double flashgg_nvtx     = glob::event->GetEventFlashggNvtx();
       double flashgg_npu      = glob::event->GetEventFlashggNpu();
-      msg("event_weight, originalXWGTUP, flashgg_puweight, flashgg_nvtx, flashgg_npu = ", event_weight, originalXWGTUP, flashgg_puweight, flashgg_nvtx, flashgg_npu);
-      msg("hzura::glob::event->GetEventFlashggWeight() = ", hzura::glob::event->GetEventFlashggWeight());
-      msg( "flashgg_mc_weights.size() = ", glob::event->GetEventFlashggMcWeights().size() );
-      for( auto w : glob::event->GetEventFlashggMcWeights() ){
-        cout << w << endl;
-      }
-      msg( "MC weights.size() = ", glob::event->GetEventWeights().size() );
-      msg( "ps_weights.size() = ", glob::event->GetEventPsWeights().size() );
+      // msg("event_weight, originalXWGTUP, flashgg_puweight, flashgg_nvtx, flashgg_npu = ", event_weight, originalXWGTUP, flashgg_puweight, flashgg_nvtx, flashgg_npu);
+      // msg("hzura::glob::event->GetEventFlashggWeight() = ", hzura::glob::event->GetEventFlashggWeight());
+      // msg( "flashgg_mc_weights.size() = ", glob::event->GetEventFlashggMcWeights().size() );
+      // for( auto w : glob::event->GetEventFlashggMcWeights() ){
+      //   cout << w << endl;
+      // }
+      // msg( "MC weights.size() = ", glob::event->GetEventWeights().size() );
+      // msg( "ps_weights.size() = ", glob::event->GetEventPsWeights().size() );
 
       std::vector<hzura::GenParticle>    & genparticles = *(hevents.genparticles);
       std::vector<hzura::Photon>    & photons   = *(hevents.photon_candidates);
@@ -493,8 +456,8 @@ int main(int argc, char *argv[]) { // FIXME
       const hzura::MET              & met       =   hevents.met;
 
       // Remove info from previos event
-      N_ljets = -1; N_muons = -1; N_electrons = -1; N_leptons = -1;
       muon_channel = -1;
+      N_ljets = -1; N_muons = -1; N_electrons = -1; N_leptons = -1;
       dR_yy = -1; dR_jj = -1; dR_WL = -1; dR_WW = -1; dR_HH = -1; dR_jj_leading = -1;
       dPhi_nuL = -2 * 3.14 - 1; m_yy = -1; y1_Et_div_m_yy = -1; y2_Et_div_m_yy = -1;
       y1_tlv = TLorentzVector();  y2_tlv = TLorentzVector(); H_yy_tlv = TLorentzVector(); ljet1_tlv = TLorentzVector();
@@ -502,6 +465,7 @@ int main(int argc, char *argv[]) { // FIXME
       nu_reco_tlv = TLorentzVector(); W_elnu_tlv = TLorentzVector(); H_WW_tlv = TLorentzVector(); nu_tlv = TLorentzVector(); HH_tlv  = TLorentzVector();
       W_jj_tlv_leading = TLorentzVector();
       ljet1_btag = -2; ljet2_btag = -2;
+      CosTheta_y1_Hyy = 2; CosTheta_j1_Wjj = 2; CosTheta_Hww_W_jj = 2;
 
       // GENPARTICLES SELECTIONS ==============================================
       //msg( "N genparticles = ", genparticles.size() );
@@ -566,11 +530,13 @@ int main(int argc, char *argv[]) { // FIXME
       H_yy_tlv = y1_tlv + y2_tlv ;
       y1_mva = photons[0].mva_value;
       y2_mva = photons[1].mva_value;
-      yy_mva = 0; // diphoton_mva TODO;
+      yy_mva = hzura::glob::event->GetDiphotonMva();
       dR_yy  = y1_tlv.DeltaR( y2_tlv );
 
       // M yy in [100, 180]
       if( H_yy_tlv.M() < 100 or H_yy_tlv.M() > 180 ) continue;
+      if( DATASET_TYPE == "D" )
+        if( H_yy_tlv.M() < 100 and H_yy_tlv.M() > 180 ) continue; // <======= BLIND
       selections->Fill("H_yy_tlv.M() in [100, 180]", 1);
 
       // EVENT HLV RECONSTRUCTION ==============================================
@@ -599,12 +565,13 @@ int main(int argc, char *argv[]) { // FIXME
       W_elnu_tlv = nu_tlv + lep_leading_tlv;
 
       // Delta Phi
-      dPhi_nuL = nu_tlv.DeltaPhi( el_leading_tlv );
+      dPhi_nuL = nu_tlv.DeltaPhi( lep_leading_tlv );
 
       // other
       m_yy = H_yy_tlv.M();
       y1_Et_div_m_yy = y1_tlv.Et() / m_yy;
       y2_Et_div_m_yy = y2_tlv.Et() / m_yy;
+      CosTheta_y1_Hyy = TMath::Cos( y1_tlv.Angle( H_yy_tlv.Vect() ) );
 
       // W->jj candidate
       bool HH_reconstructed = false;
@@ -642,12 +609,15 @@ int main(int argc, char *argv[]) { // FIXME
 
         dR_jj  = ljet1_tlv.DeltaR( ljet2_tlv );
         dR_WL  = W_jj_tlv.DeltaR( el_leading_tlv );
+        CosTheta_j1_Wjj = TMath::Cos( ljet1_tlv.Angle( W_jj_tlv.Vect() ) );
       }
 
       dR_WW  = -1, dR_HH = -1;
       if( HH_reconstructed ) {
         dR_WW  = W_jj_tlv.DeltaR( W_elnu_tlv );
         dR_HH = H_yy_tlv.DeltaR( H_WW_tlv );
+
+        CosTheta_Hww_W_jj = TMath::Cos( W_jj_tlv.Angle( H_WW_tlv.Vect() ) );
       }
 
       // difference in match with generator
@@ -694,7 +664,15 @@ int main(int argc, char *argv[]) { // FIXME
 
       // msg( "get weights ... " );
       if( DATASET_TYPE != "D" ){
-        //mc_weight     = hzura::glob::event->GetEventWeight() ;
+        // I.
+        // hzura::glob::event->GetEventWeight() ;
+        // event.weight          = genEvtInfo->weight();
+        // not available in flashgg samples ...
+        // II.
+        // hzura::glob::event->GetEventFlashggWeight()
+        // flashgg_weight - xsection norm to sum of weights
+        // because the background is data-driven could work
+
         mc_weight     = hzura::glob::event->GetEventFlashggWeight() ;
         EventWeights weights = hzura::calc_event_weight(used_photons, used_electrons, used_muons, used_ljets, used_bjets, preselector.pileup_sf_calculator);
         event_weight                       = weights.combined_weight;
@@ -702,12 +680,29 @@ int main(int argc, char *argv[]) { // FIXME
         for(int i = 0; i < dummy_weight.combined_weights_names.size(); i++){
           (*(event_alt_weights_up[i]   ))   = weights.combined_weights_up[i];
           (*(event_alt_weights_down[i] ))   = weights.combined_weights_down[i];
-          (*(event_alt_weights_central[i])) = weights.combined_weights_up[i];
+          (*(event_alt_weights_central[i])) = separate_weights[i]->c;
           // cout << i << " " << *(event_alt_weights_up[i]) << " " << *(event_alt_weights_down[i]) << endl;
         }
 
         if( event_weight < 0.001) weights.Print();
       }
+
+      channel = 0;
+      // channels
+      // 1 - 0 jet, e
+      // 2 - 0 jet, mu
+      // 3 - 1 jet, e
+      // 4 - 1 jet, mu
+      // 5 - 2+ jets, H not reconstructed, e
+      // 6 - 2+ jets, H not reconstructed, mu
+      // 7 - 2+ jets, H reconstructed, e
+      // 8 - 2+ jets, H reconstructed, mu
+      if(N_ljets == 0) channel = 1;
+      if(N_ljets == 1) channel = 3;
+      if(N_ljets > 1 ) channel = 5;
+      if( HH_reconstructed ) channel += 2;
+      if( N_muons )          channel += 1;
+      
 
       output_tree->Fill();
     }
@@ -758,7 +753,7 @@ int main_root_wrapper(string input_file, string output_file, string type, string
   V grinder mu/e preselected exactly like in flashgg
   V categories ( 1,2 light jets, Higgs not reconstructed )
   V BDT variables : missing et, photon MVA, p_T nu, delta phi (nu, el), Tagger for jets, etas, 
-  - Save all weights separatly + MC
+  V Save all weights separatly + MC
   - Add SM H to stat analyses
   - Add PDF & Scale Systematic uncertanties
   - Dalitz filter

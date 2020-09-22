@@ -2,8 +2,6 @@
 #ifndef hzura_cfg_h
 #define hzura_cfg_h 1
 
-#include "Events.h"
-
 namespace hzura {
 
   enum id_names {
