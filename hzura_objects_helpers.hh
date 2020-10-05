@@ -25,8 +25,9 @@ namespace hzura {
       sf_PreselSF.Set( 1.f ); 
       sf_Trigger.Set( 1.f ); 
       sf_electronVetoSF.Set( 1.f );
+      sf_PrefireSF.Set( 1.f );
 
-      combined_weights_names      = {"sf_photons", "sf_electrons", "sf_muons_id", "sf_muons_iso", "sf_ljets_btag", "sf_bjets_btag", "sf_pileup", "sf_PUJID_tag", "sf_PUJID_mistag", "FracRV", "LooseMvaSF", "PreselSF", "Trigger",  "electronVetoSF"};
+      combined_weights_names      = {"sf_photons", "sf_electrons", "sf_muons_id", "sf_muons_iso", "sf_ljets_btag", "sf_bjets_btag", "sf_pileup", "sf_PUJID_tag", "sf_PUJID_mistag", "FracRV", "LooseMvaSF", "PreselSF", "Trigger",  "electronVetoSF", "PrefireSF"};
       combined_weight = 1.f;
       for(int i = 0, wn = combined_weights_names.size(); i < wn; i++){
         combined_weights_up.push_back( 1.f );
@@ -36,7 +37,7 @@ namespace hzura {
 
     void CombineWeights(){
       vector<Weight*>     weights = {&sf_photons, &sf_electrons, &sf_muons_id, &sf_muons_iso, &sf_ljets_btag, &sf_bjets_btag, &sf_pileup, &sf_PUJID_tag, &sf_PUJID_mistag,
-                                     &sf_FracRV, &sf_LooseMvaSF, &sf_PreselSF, &sf_Trigger, &sf_electronVetoSF };
+                                     &sf_FracRV, &sf_LooseMvaSF, &sf_PreselSF, &sf_Trigger, &sf_electronVetoSF, &sf_PrefireSF };
       combined_weight             = 1.f;
       for(int i = 0, wn = combined_weights_names.size(); i < wn; i++){
         combined_weight *= weights[i]->c;
@@ -58,7 +59,7 @@ namespace hzura {
     }
 
     std::vector<Weight*> GetWeights() {
-      std::vector<Weight*>     weights  = { &sf_photons, &sf_electrons, &sf_muons_id, &sf_muons_iso, &sf_ljets_btag, &sf_bjets_btag, &sf_pileup, &sf_PUJID_tag, &sf_PUJID_mistag, &sf_FracRV, &sf_LooseMvaSF, &sf_PreselSF, &sf_Trigger, &sf_electronVetoSF };
+      std::vector<Weight*>     weights  = { &sf_photons, &sf_electrons, &sf_muons_id, &sf_muons_iso, &sf_ljets_btag, &sf_bjets_btag, &sf_pileup, &sf_PUJID_tag, &sf_PUJID_mistag, &sf_FracRV, &sf_LooseMvaSF, &sf_PreselSF, &sf_Trigger, &sf_electronVetoSF, &sf_PrefireSF };
       return weights;
     }
 
@@ -82,7 +83,7 @@ namespace hzura {
     Weight sf_pileup;
     Weight sf_PUJID_tag, sf_PUJID_mistag;
 
-    Weight sf_FracRV, sf_LooseMvaSF, sf_PreselSF, sf_Trigger, sf_electronVetoSF;
+    Weight sf_FracRV, sf_LooseMvaSF, sf_PreselSF, sf_Trigger, sf_electronVetoSF, sf_PrefireSF;
   };
 
   EventWeights calc_event_weight(const vector<Photon> & selected_photons, const vector<Electron> & selected_electrons, const vector<Muon> & selected_muons,
@@ -94,13 +95,41 @@ namespace hzura {
       ews.sf_photons.Mult( obj.sf );
 
     // apply di-photons SFs, systematics --- flashgg
-    // "Central", "FracRVWeightCentral", "FracRVWeightDown01sigma", "FracRVWeightUp01sigma", "LooseMvaSFCentral", "LooseMvaSFDown01sigma", "LooseMvaSFUp01sigma", "PreselSFCentral",       "PreselSFDown01sigma",       "PreselSFUp01sigma", "TriggerWeightCentral",  "TriggerWeightDown01sigma",  "TriggerWeightUp01sigma", "electronVetoSFCentral", "electronVetoSFDown01sigma", "electronVetoSFUp01sigma"
+    /* OLD INDEXES "Central", "FracRVWeightCentral", "FracRVWeightDown01sigma", "FracRVWeightUp01sigma", "LooseMvaSFCentral", "LooseMvaSFDown01sigma", "LooseMvaSFUp01sigma", "PreselSFCentral",       "PreselSFDown01sigma",       "PreselSFUp01sigma", "TriggerWeightCentral",  "TriggerWeightDown01sigma",  "TriggerWeightUp01sigma", "electronVetoSFCentral", "electronVetoSFDown01sigma", "electronVetoSFUp01sigma"
     const std::vector<Float_t> & diphoton_weights = hzura::glob::event->GetEventFlashggDiphotonWeights();
-    ews.sf_FracRV.Set( diphoton_weights[2], diphoton_weights[0], diphoton_weights[3] );
-    ews.sf_LooseMvaSF.Set( diphoton_weights[5], diphoton_weights[0], diphoton_weights[6] );
-    ews.sf_PreselSF.Set( diphoton_weights[8], diphoton_weights[0], diphoton_weights[9] );
-    ews.sf_Trigger.Set( diphoton_weights[11], diphoton_weights[0], diphoton_weights[12] );
-    ews.sf_electronVetoSF.Set( diphoton_weights[14], diphoton_weights[0], diphoton_weights[15] );
+    ews.sf_FracRV.Set        ( diphoton_weights[2],  diphoton_weights[1], diphoton_weights[3] );
+    ews.sf_LooseMvaSF.Set    ( diphoton_weights[5],  diphoton_weights[4], diphoton_weights[6] );
+    ews.sf_PreselSF.Set      ( diphoton_weights[8],  diphoton_weights[7], diphoton_weights[9] );
+    ews.sf_Trigger.Set       ( diphoton_weights[11], diphoton_weights[10], diphoton_weights[12] );
+    ews.sf_electronVetoSF.Set( diphoton_weights[14], diphoton_weights[13], diphoton_weights[15] );
+    */
+
+    /* NEW INDEXES Central LooseMvaSFCentral LooseMvaSFDown01sigma LooseMvaSFUp01sigma
+                           PreselSFCentral   PreselSFDown01sigma   PreselSFUp01sigma
+                           TriggerWeightCentral TriggerWeightDown01sigma TriggerWeightUp01sigma
+                           electronVetoSFCentral electronVetoSFDown01sigma electronVetoSFUp01sigma
+                           prefireWeight prefireWeightDown01sigma prefireWeightUp01sigma
+    */
+
+    const std::vector<Float_t> & diphoton_weights = hzura::glob::event->GetEventFlashggDiphotonWeights();
+    ews.sf_FracRV.Set        ( 1.,  1., 1. );
+    ews.sf_LooseMvaSF.Set    ( diphoton_weights[2],  diphoton_weights[1], diphoton_weights[3] );
+    ews.sf_PreselSF.Set      ( diphoton_weights[5],  diphoton_weights[4], diphoton_weights[6] );
+    ews.sf_Trigger.Set       ( diphoton_weights[8],  diphoton_weights[7], diphoton_weights[9] );
+    ews.sf_electronVetoSF.Set( diphoton_weights[11], diphoton_weights[10], diphoton_weights[12] );
+    ews.sf_PrefireSF.Set     ( diphoton_weights[14], diphoton_weights[13], diphoton_weights[15] );
+
+    if(diphoton_weights[0] < 0.0000001){
+      cout << "!!!===============" << endl;
+      cout << diphoton_weights.size() << " " <<  diphoton_weights[0] << endl;
+      cout << diphoton_weights[2] << " " << diphoton_weights[1] << " " << diphoton_weights[3] << endl;
+      cout << diphoton_weights[5] << " " << diphoton_weights[4] << " " << diphoton_weights[6] << endl;
+      cout << diphoton_weights[8] << " " << diphoton_weights[7] << " " << diphoton_weights[9] << endl;
+      cout << diphoton_weights[11] << " " << diphoton_weights[10] << " " << diphoton_weights[12] << endl;
+      cout << diphoton_weights[14] << " " << diphoton_weights[13] << " " << diphoton_weights[15] << endl;
+      cout << diphoton_weights[17] << " " << diphoton_weights[16] << " " << diphoton_weights[18] << endl;
+      cout << "!!!===============" << endl;
+    }
 
     /*
     cout << diphoton_weights.size() << " " <<  diphoton_weights[0] << endl;

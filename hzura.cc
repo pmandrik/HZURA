@@ -535,8 +535,7 @@ int main(int argc, char *argv[]) { // FIXME
 
       // M yy in [100, 180]
       if( H_yy_tlv.M() < 100 or H_yy_tlv.M() > 180 ) continue;
-      if( DATASET_TYPE == "D" )
-        if( H_yy_tlv.M() < 100 and H_yy_tlv.M() > 180 ) continue; // <======= BLIND
+      // if( DATASET_TYPE == "D" ) if( H_yy_tlv.M() < 100 and H_yy_tlv.M() > 180 ) continue; // <======= BLIND
       selections->Fill("H_yy_tlv.M() in [100, 180]", 1);
 
       // EVENT HLV RECONSTRUCTION ==============================================

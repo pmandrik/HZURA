@@ -13,13 +13,27 @@ run_anal(){
   echo "gROOT->LoadMacro( \"hzura.cc\" ); main_root_wrapper(\"$input\", \"$output\", \"$type\", \"$runmode\");" | root -l -b 
 }
 
-outdir=../output_v7
-postfix=v7
+inpdir=/eos/user/p/pmandrik/HHWWgg/samples_v6
+outdir=../output_v7a
+postfix=v7a
 
-#run_anal /eos/user/p/pmandrik/HHWWgg/samples_v6/output_GluGluToHHTo_WWgg_qqlnu_nodeSM.root            $outdir/hzura_2017_SM_$postfix.root S
-#run_anal /eos/user/p/pmandrik/HHWWgg/samples_v6/output_eft2.root                                      $outdir/hzura_2017_EFT2_$postfix.root S
-#run_anal /eos/user/p/pmandrik/HHWWgg/samples_v6/output_eft9.root                                      $outdir/hzura_2017_EFT9_$postfix.root S
-run_anal /eos/user/p/pmandrik/HHWWgg/samples_v6/output_DiPhotonJetsBox_MGG_80toInf_13TeV_Sherpa.root  $outdir/hzura_2017_ggjets_mgg80toInf_$postfix.root   B
+run_anal $inpdir/output_GluGluToHHTo_WWgg_qqlnu_nodeSM.root            $outdir/hzura_2017_SM_$postfix.root S
+
+exit
+run_anal $inpdir/output_GluGluToHHTo_WWgg_qqlnu_nodeSM.root            $outdir/hzura_2017_SM_$postfix.root S
+run_anal $inpdir/output_eft2.root                                      $outdir/hzura_2017_EFT2_$postfix.root S
+run_anal $inpdir/output_eft9.root                                      $outdir/hzura_2017_EFT9_$postfix.root S
+
+run_anal $inpdir/output_data_2017.root                                 $outdir/hzura_2017_data_$postfix.root D
+
+run_anal $inpdir/output_GluGluHToGG.root                                         $outdir/hzura_2017_GluGluHToGG_M125_13TeV_amcatnloFXFX_pythia8_$postfix.root          B                       
+run_anal $inpdir/output_ttHJetToGG_M125_13TeV_amcatnloFXFX_madspin_pythia8.root  $outdir/hzura_2017_ttHJetToGG_M125_13TeV_amcatnloFXFX_madspin_pythia8_$postfix.root   B
+run_anal $inpdir/output_VBFHToGG_M125_13TeV_amcatnlo_pythia8.root                $outdir/hzura_2017_VBFHToGG_M125_13TeV_amcatnlo_pythia8_$postfix.root                 B
+run_anal $inpdir/output_VHToGG_M125_13TeV_amcatnloFXFX_madspin_pythia8.root      $outdir/hzura_2017_VHToGG_M125_13TeV_amcatnloFXFX_madspin_pythia8_$postfix.root       B
+
+run_anal $inpdir/output_DiPhotonJetsBox_MGG_80toInf_13TeV_Sherpa.root                            $outdir/hzura_2017_ggjets_mgg80toInf_$postfix.root   B
+run_anal $inpdir/output_GJet_Pt_20to40_DoubleEMEnriched_MGG_80toInf_TuneCP5_13TeV_Pythia8.root   $outdir/hzura_2017_GJet_Pt_20to40_DoubleEMEnriched_MGG_80toInf_$postfix.root   B
+run_anal $inpdir/output_GJet_Pt-40toInf_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root  $outdir/hzura_2017_GJet_Pt_40toInf_DoubleEMEnriched_MGG_80toInf_$postfix.root   B
 
 exit
 run_anal /eos/user/p/pmandrik/HHWWgg/samples_v5/output_GluGluToHHTo_WWgg_qqlnu_nodeSM.root       $outdir/hzura_2017_SM_v6.root S

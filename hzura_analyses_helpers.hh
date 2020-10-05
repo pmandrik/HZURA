@@ -248,8 +248,11 @@ namespace hzura {
       TLorentzVector P_H1 = p1 + P_wl;
       TLorentzVector P_H2 = p2 + P_wl;
 
-      if( P_H1.M() < P_H2.M() ) P_n_answer = p1;
-      else                      P_n_answer = p2;
+      // if( P_H1.M() < P_H2.M() ) P_n_answer = p1;
+      // else                      P_n_answer = p2;
+
+      if( TMath::Abs( p1.Pz() ) < TMath::Abs( p2.Pz() ) ) P_n_answer = p1;
+      else                                                P_n_answer = p2;
 		}
 		else{
       P_n_answer.SetXYZM(P_n.Px(), P_n.Py(), x, P_n.M());

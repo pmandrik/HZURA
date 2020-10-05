@@ -56,7 +56,7 @@ namespace hzura {
     }
 
     // photons ================================================================================================
-    std::shared_ptr< std::vector<hzura::Photon> > PreselectPhotons( const hzura::EventCfg & cfg ){
+    std::shared_ptr< std::vector<hzura::Photon> > PreselectPhotons( const hzura::EventCfg & cfg ) {
       MSG_DEBUG("hzura::ObjectPreselector.PreselectPhotons():  ... ");
       // cfg.PHOTON_ENERGY_CORRECTION_TYPE
       // cfg.PHOTON_PT_CUT
