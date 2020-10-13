@@ -27,7 +27,12 @@ namespace hzura {
       sf_electronVetoSF.Set( 1.f );
       sf_PrefireSF.Set( 1.f );
 
-      combined_weights_names      = {"sf_photons", "sf_electrons", "sf_muons_id", "sf_muons_iso", "sf_ljets_btag", "sf_bjets_btag", "sf_pileup", "sf_PUJID_tag", "sf_PUJID_mistag", "FracRV", "LooseMvaSF", "PreselSF", "Trigger",  "electronVetoSF", "PrefireSF"};
+      sf_PDF.Set( 1.f );
+      sf_muR.Set( 1.f );
+      sf_muF.Set( 1.f );
+      sf_muRmuF.Set( 1.f );
+
+      combined_weights_names      = {"sf_photons", "sf_electrons", "sf_muons_id", "sf_muons_iso", "sf_ljets_btag", "sf_bjets_btag", "sf_pileup", "sf_PUJID_tag", "sf_PUJID_mistag", "FracRV", "LooseMvaSF", "PreselSF", "Trigger",  "electronVetoSF", "PrefireSF", "PDF", "muR", "muF", "muRmuF", };
       combined_weight = 1.f;
       for(int i = 0, wn = combined_weights_names.size(); i < wn; i++){
         combined_weights_up.push_back( 1.f );
@@ -37,7 +42,7 @@ namespace hzura {
 
     void CombineWeights(){
       vector<Weight*>     weights = {&sf_photons, &sf_electrons, &sf_muons_id, &sf_muons_iso, &sf_ljets_btag, &sf_bjets_btag, &sf_pileup, &sf_PUJID_tag, &sf_PUJID_mistag,
-                                     &sf_FracRV, &sf_LooseMvaSF, &sf_PreselSF, &sf_Trigger, &sf_electronVetoSF, &sf_PrefireSF };
+                                     &sf_FracRV, &sf_LooseMvaSF, &sf_PreselSF, &sf_Trigger, &sf_electronVetoSF, &sf_PrefireSF, &sf_PDF, &sf_muR, &sf_muF, &sf_muRmuF };
       combined_weight             = 1.f;
       for(int i = 0, wn = combined_weights_names.size(); i < wn; i++){
         combined_weight *= weights[i]->c;
@@ -59,7 +64,7 @@ namespace hzura {
     }
 
     std::vector<Weight*> GetWeights() {
-      std::vector<Weight*>     weights  = { &sf_photons, &sf_electrons, &sf_muons_id, &sf_muons_iso, &sf_ljets_btag, &sf_bjets_btag, &sf_pileup, &sf_PUJID_tag, &sf_PUJID_mistag, &sf_FracRV, &sf_LooseMvaSF, &sf_PreselSF, &sf_Trigger, &sf_electronVetoSF, &sf_PrefireSF };
+      std::vector<Weight*>     weights  = { &sf_photons, &sf_electrons, &sf_muons_id, &sf_muons_iso, &sf_ljets_btag, &sf_bjets_btag, &sf_pileup, &sf_PUJID_tag, &sf_PUJID_mistag, &sf_FracRV, &sf_LooseMvaSF, &sf_PreselSF, &sf_Trigger, &sf_electronVetoSF, &sf_PrefireSF, &sf_PDF, &sf_muR, &sf_muF, &sf_muRmuF };
       return weights;
     }
 
@@ -82,6 +87,7 @@ namespace hzura {
     Weight sf_bjets_id, sf_bjets_btag;
     Weight sf_pileup;
     Weight sf_PUJID_tag, sf_PUJID_mistag;
+    Weight sf_PDF, sf_muR, sf_muF, sf_muRmuF;
 
     Weight sf_FracRV, sf_LooseMvaSF, sf_PreselSF, sf_Trigger, sf_electronVetoSF, sf_PrefireSF;
   };
@@ -212,6 +218,15 @@ namespace hzura {
         ews.sf_PUJID_mistag.d *= obj.sf_pujid.d;
       }
     }
+
+    // PDF+scale
+    Float_t PDF_up, PDF_dn, muR_up, muR_dn, muF_up, muF_dn, muRmuF_up, muRmuF_dn;
+    calc_flashgg_lhe_uncertanties(PDF_up, PDF_dn, muR_up, muR_dn, muF_up, muF_dn, muRmuF_up, muRmuF_dn);
+
+    ews.sf_PDF.Set( PDF_dn,  1., PDF_up ) ;
+    ews.sf_muR.Set( muR_up,  1., muR_dn ) ;
+    ews.sf_muF.Set( muF_up,  1., muF_up ) ;
+    ews.sf_muRmuF.Set( muRmuF_up,  1., muRmuF_dn ) ;
 
     // total and variations
     ews.CombineWeights();

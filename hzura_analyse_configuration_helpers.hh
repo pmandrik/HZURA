@@ -208,21 +208,31 @@ namespace hzura {
   }
 
   // Definition of JEC uncertanties  ===============================================================================================
-  JecReader get_jec_uncertanties(){ // FIXME 2016 2017 2018
+  // https://twiki.cern.ch/twiki/bin/viewauth/CMS/JECUncertaintySources#Run_2_reduced_set_of_uncertainty
+  JecReader get_jec_uncertanties(){
     // https://twiki.cern.ch/twiki/bin/view/CMS/JECDataMC
     std::vector<std::string> unc_names;
     std::string unc_inp_file;
     if(hzura::glob::year_era == "2016") {
       unc_names = {"Total", "SubTotalMC", "SubTotalAbsolute", "SubTotalScale", "SubTotalPt", "SubTotalRelative", "SubTotalPileUp", "FlavorQCD", "TimePtEta"};
       unc_inp_file = "data/JEC/Summer16_07Aug2017_V11_MC/Summer16_07Aug2017_V11_MC_UncertaintySources_AK4PF.txt";
+
+      unc_names = {"Absolute", "Absolute_2016", "BBEC1", "BBEC1_2016", "EC2", "EC2_2016", "FlavorQCD", "HF", "HF_2016", "RelativeBal", "RelativeSample_2016"};
+      unc_inp_file = "data/JEC/Regrouped_Summer16_07Aug2017_V11_MC_UncertaintySources_AK4PFchs.txt";
     }
     if(hzura::glob::year_era == "2017") {
       unc_names = {"Total", "SubTotalMC", "SubTotalAbsolute", "SubTotalScale", "SubTotalPt", "SubTotalRelative", "SubTotalPileUp", "FlavorQCD", "TimePtEta"};
       unc_inp_file = "data/JEC/Fall17_17Nov2017_V32_MC/Fall17_17Nov2017_V32_MC_UncertaintySources_AK4PF.txt";
+
+      unc_names = {"Absolute", "Absolute_2017", "BBEC1", "BBEC1_2017", "EC2", "EC2_2017", "FlavorQCD", "HF", "HF_2017", "RelativeBal", "RelativeSample_2017"};
+      unc_inp_file = "data/JEC/Regrouped_Fall17_17Nov2017_V32_MC_UncertaintySources_AK4PFchs.txt";
     }
     if(hzura::glob::year_era == "2018") {
       unc_names = {"Total", "SubTotalMC", "SubTotalAbsolute", "SubTotalScale", "SubTotalPt", "SubTotalRelative", "SubTotalPileUp", "FlavorQCD", "TimePtEta"};
       unc_inp_file = "";
+
+      unc_names = {"Absolute", "Absolute_2018", "BBEC1", "BBEC1_2018", "EC2", "EC2_2018", "FlavorQCD", "HF", "HF_2018", "RelativeBal", "RelativeSample_2018"};
+      unc_inp_file = "data/JEC/Regrouped_Autumn18_V19_MC_UncertaintySources_AK4PFchs.txt";
     }
 
     msg("hzura::get_jec_uncertanties() ... ", unc_inp_file);

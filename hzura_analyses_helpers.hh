@@ -278,6 +278,25 @@ namespace hzura {
       EventCfg cfg_JERDown   = copy_cfg( cfg, "JERDown" );
       cfg_JERDown.JET_JER = "down";
 
+      // https://twiki.cern.ch/twiki/bin/viewauth/CMS/JECUncertaintySources#Run_2_reduced_set_of_uncertainty
+      std::vector<std::string> jec_uncertanties;
+      if(hzura::glob::year_era == "2016") jec_uncertanties = {"Absolute", "Absolute_2016", "BBEC1", "BBEC1_2016", "EC2", "EC2_2016", "FlavorQCD", "HF", "HF_2016", "RelativeBal", "RelativeSample_2016"};
+      if(hzura::glob::year_era == "2017") jec_uncertanties = {"Absolute", "Absolute_2017", "BBEC1", "BBEC1_2017", "EC2", "EC2_2017", "FlavorQCD", "HF", "HF_2017", "RelativeBal", "RelativeSample_2017"};
+      if(hzura::glob::year_era == "2018") jec_uncertanties = {"Absolute", "Absolute_2018", "BBEC1", "BBEC1_2018", "EC2", "EC2_2018", "FlavorQCD", "HF", "HF_2018", "RelativeBal", "RelativeSample_2018"};
+
+      for(auto jec_uncertantie : jec_uncertanties){
+        EventCfg cfg_JECUp   = copy_cfg( cfg, "JEC_" + jec_uncertantie + "Up" );
+        cfg_JECUp.JET_JEC_TYPE = jec_uncertantie;
+        cfg_JECUp.JET_JEC_DIR = true;
+
+        EventCfg cfg_JECDown = copy_cfg( cfg, "JEC_" + jec_uncertantie + "Down" );
+        cfg_JECDown.JET_JEC_TYPE = jec_uncertantie;
+        cfg_JECDown.JET_JEC_DIR = false;
+
+        analyses_configs.push_back( cfg_JECUp );
+        analyses_configs.push_back( cfg_JECDown );
+      }
+      /*
       EventCfg cfg_JECUp   = copy_cfg( cfg, "JECUp" );
       cfg_JECUp.JET_JEC_TYPE = "Total";
       cfg_JECUp.JET_JEC_DIR = true;
@@ -285,6 +304,7 @@ namespace hzura {
       EventCfg cfg_JECDown = copy_cfg( cfg, "JECDown" );
       cfg_JECDown.JET_JEC_TYPE = "Total";
       cfg_JECDown.JET_JEC_DIR = false;
+      */
 
       EventCfg cfg_METUp   = copy_cfg( cfg, "UnclusteredMETUp" );
       cfg_METUp.MET_SYS  = "UnclusteredEnUp";
@@ -300,8 +320,6 @@ namespace hzura {
 
       analyses_configs.push_back( cfg_JERUp );
       analyses_configs.push_back( cfg_JERDown );
-      analyses_configs.push_back( cfg_JECUp );
-      analyses_configs.push_back( cfg_JECDown );
       analyses_configs.push_back( cfg_METUp );
       analyses_configs.push_back( cfg_METDown );
 
@@ -320,6 +338,64 @@ namespace hzura {
         analyses_configs.push_back( new_cfg );
       }
     }
+
+  // flashgg/MicroAOD/python/flashggPDFWeightObject_cfi.py
+  void calc_flashgg_lhe_uncertanties(Float_t & PDF_up, Float_t & PDF_dn, Float_t & muR_up, Float_t & muR_dn, Float_t & muF_up, Float_t & muF_dn, Float_t & muRmuF_up, Float_t & muRmuF_dn){
+    std::vector<Float_t> * weights = & hzura::glob::event->event->flashgg_mc_weights;
+    int N_weights = weights->size();
+
+    int N_pdf_weights = weights->at( N_weights-2 );
+    int N_alpha_weights = weights->at( N_weights-1 );
+    int N_scale_weights = weights->at( N_weights-3 );
+
+    // for(auto weight : *weights) cout << weight << endl;
+
+    // https://arxiv.org/pdf/1510.03865.pdf
+    double PDF_nominal = 1.;
+    double PDF_sum     = 0;
+    double PDF_average     = 0;
+    for( int i = N_alpha_weights+N_scale_weights; i < weights->size()-3; i++){
+      PDF_sum += TMath::Power( PDF_nominal - weights->at(i) , 2);
+      PDF_average += weights->at(i);
+      // cout << i << " ->" << weights->at(i) << endl;
+    }
+    double PDF_error_hessian = TMath::Sqrt( PDF_sum );
+    // msg( PDF_sum );
+
+    PDF_average = PDF_average / N_pdf_weights;
+    PDF_sum     = 0;
+    for( int i = N_alpha_weights+N_scale_weights; i < weights->size()-3; i++)
+      PDF_sum += TMath::Power( weights->at(i) - PDF_average , 2);
+    double PDF_error_mc = TMath::Sqrt( PDF_sum / (N_pdf_weights - 1) );
+
+    // msg(PDF_error_hessian, PDF_error_mc, PDF_average , PDF_sum );
+
+    /*
+    <weight id="1001"> muR=1 muF=1 hdamp=mt=272.7225 </weight>
+    <weight id="1002"> muR=1 muF=2 hdamp=mt=272.7225 </weight>
+    <weight id="1003"> muR=1 muF=0.5 hdamp=mt=272.7225 </weight>
+    <weight id="1004"> muR=2 muF=1 hdamp=mt=272.7225 </weight>
+    <weight id="1005"> muR=2 muF=2 hdamp=mt=272.7225 </weight>
+    <weight id="1006"> muR=2 muF=0.5 hdamp=mt=272.7225 </weight>
+    <weight id="1007"> muR=0.5 muF=1 hdamp=mt=272.7225 </weight>
+    <weight id="1008"> muR=0.5 muF=2 hdamp=mt=272.7225 </weight>
+    <weight id="1009"> muR=0.5 muF=0.5 hdamp=mt=272.7225 </weight>
+    */
+
+    double muRmuF_nominal = weights->at( 0 );
+    muR_up         = weights->at( 3 ) / muRmuF_nominal;
+    muR_dn         = weights->at( 6 ) / muRmuF_nominal;
+    muF_up         = weights->at( 1 ) / muRmuF_nominal;
+    muF_dn         = weights->at( 2 ) / muRmuF_nominal;
+    muRmuF_up      = weights->at( 4 ) / muRmuF_nominal;
+    muRmuF_dn      = weights->at( 8 ) / muRmuF_nominal;
+
+    PDF_up = PDF_nominal + PDF_error_hessian ;
+    PDF_dn = PDF_nominal - PDF_error_hessian ;
+  }
+
+
+
 
 };
 

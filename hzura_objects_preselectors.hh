@@ -311,10 +311,10 @@ namespace hzura {
         
         // MET uncertanties, such uncertanties should be synchronised with ones applyed for jets
         if( not cfg_i.MET_SYS.size() ){
-               if( cfg_i.JET_JER == "up" )   apply_met_systematic_variation( event_i.met, "JetResUp"   );
-          else if( cfg_i.JET_JER == "down" ) apply_met_systematic_variation( event_i.met, "JetResDown" );
-          else if( cfg_i.JET_JEC_TYPE.size() and     cfg_i.JET_JEC_DIR ) apply_met_systematic_variation( event_i.met, "JetResUp"   ); // not a very correct but only available options out of the box
-          else if( cfg_i.JET_JEC_TYPE.size() and not cfg_i.JET_JEC_DIR ) apply_met_systematic_variation( event_i.met, "JetResDown" );
+               if( cfg_i.JET_JER == "up" )   apply_met_systematic_variation( event_i.met, "JetResUp"   ) ;
+          else if( cfg_i.JET_JER == "down" ) apply_met_systematic_variation( event_i.met, "JetResDown" ) ;
+          else if( cfg_i.JET_JEC_TYPE.size() and     cfg_i.JET_JEC_DIR ) apply_met_systematic_variation( event_i.met, "JetResUp"   ) ; // not a very correct but only available options out of the box
+          else if( cfg_i.JET_JEC_TYPE.size() and not cfg_i.JET_JEC_DIR ) apply_met_systematic_variation( event_i.met, "JetResDown" ) ;
         }
         else apply_met_systematic_variation( event_i.met, cfg_i.MET_SYS );
 

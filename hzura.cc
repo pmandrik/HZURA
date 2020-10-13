@@ -292,18 +292,6 @@ int main(int argc, char *argv[]) { // FIXME
   // preselector.verbose_lvl = pm::verbose::VERBOSE;
 
   MSG_INFO("hzura::main(): process input file", input_file);
-
-  // WORKFLOW :
-  // process input files in condor or local
-  // 0. read events
-  // 1. make some control plots
-  // 2. apply basic cuts on events
-  // 3. make object reconstruction
-  // 4. apply cuts
-  // 5. calculate main weights
-  // 6. calculate systematics weights
-  // TODO measure b-tag efficiency in MC samples https://twiki.cern.ch/twiki/bin/viewauth/CMS/BtagRecommendation#Useful_Tools
-
   // create histos
   TFile * file_out = new TFile( output_file.c_str(), "RECREATE" );
 
@@ -362,7 +350,7 @@ int main(int argc, char *argv[]) { // FIXME
   cfg.MET_XYCORR   = true; // true;
 
   std::vector<hzura::EventCfg> analyses_configs = { cfg };
-  if( DATASET_TYPE != "D"){
+  if( DATASET_TYPE != "D" and DATASET_TYPE != "BL" ){
     if(RUNMODE.find("SYS") != std::string::npos){
       hzura::add_systematic_cfgs_def   ( cfg, analyses_configs );
       hzura::add_systematic_cfgs_flashgg( cfg, analyses_configs );
@@ -410,12 +398,15 @@ int main(int argc, char *argv[]) { // FIXME
   }
   // return 0;
 
-  if( RUNMODE.find("SHORT") != std::string::npos ) entrys = TMath::Min( (Long64_t)1000, entrys);
+  if( RUNMODE.find("SHORT") != std::string::npos ) entrys = TMath::Min( (Long64_t)1000, entrys );
+  if( DATASET_TYPE == "S" ) entrys = 100000;
   for(;entry < entrys; entry++){
     hzura::glob::event->GetEntry(entry);
     
-    if( not (entry % 1000) )
+    if( not (entry % 1000) ){
       pm::msg_progress( float(entry)/entrys );
+      msg( float(entry), entrys );
+    }
 
     // 0. remove info from previous event
 
@@ -447,13 +438,13 @@ int main(int argc, char *argv[]) { // FIXME
       // msg( "MC weights.size() = ", glob::event->GetEventWeights().size() );
       // msg( "ps_weights.size() = ", glob::event->GetEventPsWeights().size() );
 
-      std::vector<hzura::GenParticle>    & genparticles = *(hevents.genparticles);
-      std::vector<hzura::Photon>    & photons   = *(hevents.photon_candidates);
-      std::vector<hzura::Electron>  & electrons = *(hevents.electron_candidates);
-      std::vector<hzura::Muon>      & muons     = *(hevents.muon_candidates);
-      std::vector<hzura::Jet>       & ljets     = *(hevents.ljet_candidates);
-      std::vector<hzura::Jet>       & bjets     = *(hevents.bjet_candidates);
-      const hzura::MET              & met       =   hevents.met;
+      std::vector<hzura::GenParticle> & genparticles = *(hevents.genparticles);
+      std::vector<hzura::Photon>      & photons      = *(hevents.photon_candidates);
+      std::vector<hzura::Electron>    & electrons    = *(hevents.electron_candidates);
+      std::vector<hzura::Muon>        & muons        = *(hevents.muon_candidates);
+      std::vector<hzura::Jet>         & ljets        = *(hevents.ljet_candidates);
+      std::vector<hzura::Jet>         & bjets        = *(hevents.bjet_candidates);
+      const hzura::MET                & met          =   hevents.met;
 
       // Remove info from previos event
       muon_channel = -1;
@@ -506,6 +497,8 @@ int main(int argc, char *argv[]) { // FIXME
         config.GetHist("NPVs_rev_flashgg")->Fill( hzura::glob::event->GetEventTrueMCNumInteractions(), flashgg_puweight );
       }
 
+      // calc_flashgg_lhe_uncertanties();
+
       // EVENT SELECTIONS ==============================================
       selections->Fill("flashgg preselections", 1);
 
@@ -526,12 +519,12 @@ int main(int argc, char *argv[]) { // FIXME
 
       // H->yy candidate
       y1_tlv = photons[0].tlv ;
-      y2_tlv  = photons[1].tlv ;
+      y2_tlv = photons[1].tlv ;
       H_yy_tlv = y1_tlv + y2_tlv ;
-      y1_mva = photons[0].mva_value;
-      y2_mva = photons[1].mva_value;
-      yy_mva = hzura::glob::event->GetDiphotonMva();
-      dR_yy  = y1_tlv.DeltaR( y2_tlv );
+      y1_mva = photons[0].mva_value ;
+      y2_mva = photons[1].mva_value ;
+      yy_mva = hzura::glob::event->GetDiphotonMva() ;
+      dR_yy  = y1_tlv.DeltaR( y2_tlv ) ;
 
       // M yy in [100, 180]
       if( H_yy_tlv.M() < 100 or H_yy_tlv.M() > 180 ) continue;
@@ -673,7 +666,7 @@ int main(int argc, char *argv[]) { // FIXME
         // because the background is data-driven could work
 
         mc_weight     = hzura::glob::event->GetEventFlashggWeight() ;
-        EventWeights weights = hzura::calc_event_weight(used_photons, used_electrons, used_muons, used_ljets, used_bjets, preselector.pileup_sf_calculator);
+        EventWeights weights               = hzura::calc_event_weight(used_photons, used_electrons, used_muons, used_ljets, used_bjets, preselector.pileup_sf_calculator);
         event_weight                       = weights.combined_weight;
         vector<Weight*>   separate_weights = weights.GetWeights();
         for(int i = 0; i < dummy_weight.combined_weights_names.size(); i++){
@@ -682,6 +675,7 @@ int main(int argc, char *argv[]) { // FIXME
           (*(event_alt_weights_central[i])) = separate_weights[i]->c;
           // cout << i << " " << *(event_alt_weights_up[i]) << " " << *(event_alt_weights_down[i]) << endl;
         }
+        // weights.Print();
 
         if( event_weight < 0.001) weights.Print();
       }
