@@ -32,7 +32,9 @@ namespace hzura {
       sf_muF.Set( 1.f );
       sf_muRmuF.Set( 1.f );
 
-      combined_weights_names      = {"sf_photons", "sf_electrons", "sf_muons_id", "sf_muons_iso", "sf_ljets_btag", "sf_bjets_btag", "sf_pileup", "sf_PUJID_tag", "sf_PUJID_mistag", "FracRV", "LooseMvaSF", "PreselSF", "Trigger",  "electronVetoSF", "PrefireSF", "PDF", "muR", "muF", "muRmuF", };
+      sf_alpha_s.Set( 1.f );
+
+      combined_weights_names      = {"sf_photons", "sf_electrons", "sf_muons_id", "sf_muons_iso", "sf_ljets_btag", "sf_bjets_btag", "sf_pileup", "sf_PUJID_tag", "sf_PUJID_mistag", "FracRV", "LooseMvaSF", "PreselSF", "Trigger",  "electronVetoSF", "PrefireSF", "PDF", "muR", "muF", "muRmuF", "alpha_s" };
       combined_weight = 1.f;
       for(int i = 0, wn = combined_weights_names.size(); i < wn; i++){
         combined_weights_up.push_back( 1.f );
@@ -40,9 +42,14 @@ namespace hzura {
       }
     }
 
+    std::vector<Weight*> GetWeights() {
+      std::vector<Weight*>     weights  = { &sf_photons, &sf_electrons, &sf_muons_id, &sf_muons_iso, &sf_ljets_btag, &sf_bjets_btag, &sf_pileup, &sf_PUJID_tag, &sf_PUJID_mistag, 
+                                            &sf_FracRV, &sf_LooseMvaSF, &sf_PreselSF, &sf_Trigger, &sf_electronVetoSF, &sf_PrefireSF, &sf_PDF, &sf_muR, &sf_muF, &sf_muRmuF, &sf_alpha_s };
+      return weights;
+    }
+
     void CombineWeights(){
-      vector<Weight*>     weights = {&sf_photons, &sf_electrons, &sf_muons_id, &sf_muons_iso, &sf_ljets_btag, &sf_bjets_btag, &sf_pileup, &sf_PUJID_tag, &sf_PUJID_mistag,
-                                     &sf_FracRV, &sf_LooseMvaSF, &sf_PreselSF, &sf_Trigger, &sf_electronVetoSF, &sf_PrefireSF, &sf_PDF, &sf_muR, &sf_muF, &sf_muRmuF };
+      vector<Weight*>     weights = GetWeights();
       combined_weight             = 1.f;
       for(int i = 0, wn = combined_weights_names.size(); i < wn; i++){
         combined_weight *= weights[i]->c;
@@ -61,11 +68,6 @@ namespace hzura {
         combined_weights_up[i]   = w_up   * weights[i]->u / weights[i]->c;
         combined_weights_down[i] = w_down * weights[i]->d / weights[i]->c;
       }
-    }
-
-    std::vector<Weight*> GetWeights() {
-      std::vector<Weight*>     weights  = { &sf_photons, &sf_electrons, &sf_muons_id, &sf_muons_iso, &sf_ljets_btag, &sf_bjets_btag, &sf_pileup, &sf_PUJID_tag, &sf_PUJID_mistag, &sf_FracRV, &sf_LooseMvaSF, &sf_PreselSF, &sf_Trigger, &sf_electronVetoSF, &sf_PrefireSF, &sf_PDF, &sf_muR, &sf_muF, &sf_muRmuF };
-      return weights;
     }
 
     void Print() {
@@ -87,13 +89,13 @@ namespace hzura {
     Weight sf_bjets_id, sf_bjets_btag;
     Weight sf_pileup;
     Weight sf_PUJID_tag, sf_PUJID_mistag;
-    Weight sf_PDF, sf_muR, sf_muF, sf_muRmuF;
+    Weight sf_PDF, sf_muR, sf_muF, sf_muRmuF, sf_alpha_s;
 
     Weight sf_FracRV, sf_LooseMvaSF, sf_PreselSF, sf_Trigger, sf_electronVetoSF, sf_PrefireSF;
   };
 
   EventWeights calc_event_weight(const vector<Photon> & selected_photons, const vector<Electron> & selected_electrons, const vector<Muon> & selected_muons,
-                                 const vector<Jet> & selected_ljets,  const vector<Jet> & selected_bjets, const PileUpSFReader & pileup_sf_calculator){
+                                 const vector<Jet> & selected_ljets,  const vector<Jet> & selected_bjets, const PileUpSFReader & pileup_sf_calculator, bool make_custom_pdf = false, bool hessian_pdf = false){
     EventWeights ews;
     // apply photons SFs
     // ID+ISO
@@ -220,13 +222,19 @@ namespace hzura {
     }
 
     // PDF+scale
-    Float_t PDF_up, PDF_dn, muR_up, muR_dn, muF_up, muF_dn, muRmuF_up, muRmuF_dn;
-    calc_flashgg_lhe_uncertanties(PDF_up, PDF_dn, muR_up, muR_dn, muF_up, muF_dn, muRmuF_up, muRmuF_dn);
-
+    Float_t PDF_up, PDF_dn, muR_up, muR_dn, muF_up, muF_dn, muRmuF_up, muRmuF_dn, alpha_s_dn, alpha_s_up;
+    calc_flashgg_lhe_uncertanties(PDF_up, PDF_dn, muR_up, muR_dn, muF_up, muF_dn, muRmuF_up, muRmuF_dn, alpha_s_dn, alpha_s_up);
     ews.sf_PDF.Set( PDF_dn,  1., PDF_up ) ;
-    ews.sf_muR.Set( muR_up,  1., muR_dn ) ;
-    ews.sf_muF.Set( muF_up,  1., muF_up ) ;
-    ews.sf_muRmuF.Set( muRmuF_up,  1., muRmuF_dn ) ;
+    ews.sf_muR.Set( muR_dn,  1., muR_up ) ;
+    ews.sf_muF.Set( muF_dn,  1., muF_up ) ;
+    ews.sf_muRmuF.Set( muRmuF_dn,  1., muRmuF_up ) ;
+    ews.sf_alpha_s.Set( alpha_s_dn,  1., alpha_s_up ) ;
+
+    if( make_custom_pdf ){
+      Float_t PDF_central;
+      recalc_pdf_uncertanties(PDF_central, PDF_up, PDF_dn, hessian_pdf);
+      ews.sf_PDF.Set( PDF_dn,  PDF_central, PDF_up ) ;
+    }
 
     // total and variations
     ews.CombineWeights();
@@ -493,14 +501,14 @@ namespace hzura {
     // pfDeepFlavourJetTags:probb + pfDeepFlavourJetTags:probbb + pfDeepFlavourJetTags:problepb
     j.btag_DeepFlavour_val = hzura::glob::event->GetJetPfDeepFlavourJetTagsProbb(i) + hzura::glob::event->GetJetPfDeepFlavourJetTagsProbbb(i) + hzura::glob::event->GetJetPfDeepFlavourJetTagsProblepb(i);
     if( j.btag_DeepFlavour_val < 0. ) {
-      msg("Negative Deep Flavour Jet Tag value = ", j.btag_DeepFlavour_val, hzura::glob::event->GetJetPfDeepFlavourJetTagsProbb(i), hzura::glob::event->GetJetPfDeepFlavourJetTagsProbbb(i), hzura::glob::event->GetJetPfDeepFlavourJetTagsProblepb(i) );
+      // msg("Negative Deep Flavour Jet Tag value = ", j.btag_DeepFlavour_val, hzura::glob::event->GetJetPfDeepFlavourJetTagsProbb(i), hzura::glob::event->GetJetPfDeepFlavourJetTagsProbbb(i), hzura::glob::event->GetJetPfDeepFlavourJetTagsProblepb(i) );
       j.btag_DeepFlavour_val = -0.01;
     }
     
     if(hzura::glob::year == 2016){
-      j.btag_DeepFlavour_isLoose  = (j.btag_DeepFlavour_val > 0.0494) ? true : false;
-      j.btag_DeepFlavour_isMedium = (j.btag_DeepFlavour_val > 0.2770) ? true : false;
-      j.btag_DeepFlavour_isTight  = (j.btag_DeepFlavour_val > 0.7264) ? true : false;
+      j.btag_DeepFlavour_isLoose  = (j.btag_DeepFlavour_val > 0.0614) ? true : false;
+      j.btag_DeepFlavour_isMedium = (j.btag_DeepFlavour_val > 0.3093) ? true : false;
+      j.btag_DeepFlavour_isTight  = (j.btag_DeepFlavour_val > 0.7221) ? true : false;
     }
     else if(hzura::glob::year == 2017){
       j.btag_DeepFlavour_isLoose  = (j.btag_DeepFlavour_val > 0.0521) ? true : false;
@@ -508,7 +516,9 @@ namespace hzura {
       j.btag_DeepFlavour_isTight  = (j.btag_DeepFlavour_val > 0.7489) ? true : false;
     }
     else if(hzura::glob::year == 2018){
-      // TODO
+      j.btag_DeepFlavour_isLoose  = (j.btag_DeepFlavour_val > 0.0494) ? true : false;
+      j.btag_DeepFlavour_isMedium = (j.btag_DeepFlavour_val > 0.2770) ? true : false;
+      j.btag_DeepFlavour_isTight  = (j.btag_DeepFlavour_val > 0.7264) ? true : false;
     }
   };
 

@@ -96,6 +96,7 @@ namespace hzura {
       std::shared_ptr< std::vector<hzura::Photon> > photon_candidates ( new std::vector<hzura::Photon> );
       hzura::Photon   photon_candidate;
 
+      
       int N_start_index = 2*cfg.FLASHGG_DIPHOTON_INDEX;
       int N_end_index   = 2*cfg.FLASHGG_DIPHOTON_INDEX + 2;
       for(int i = N_start_index; i < N_end_index; i++){
@@ -127,6 +128,7 @@ namespace hzura {
       std::shared_ptr< std::vector<hzura::Electron> > electron_candidates (new std::vector<hzura::Electron>);
       hzura::Electron   electron_candidate;
 
+      int electron_counter = 0;
       for(int i = 0, i_max = event->GetElectronsN(); i < i_max; i++){
         electron_candidate.Init( i );
         if( not hzura::glob::is_data and cfg.ELECTRON_ENERGY_CORRECTION_TYPE.size() ) apply_energy_correction( electron_candidate, cfg.ELECTRON_ENERGY_CORRECTION_TYPE ); // such as "ecalTrkEnergyPostCorr"
@@ -144,6 +146,8 @@ namespace hzura {
         if(cfg.FLASHGG_DIPHOTON_INDEX >= 0 and event->GetElectronDiphotonsVeto( i ).at(cfg.FLASHGG_DIPHOTON_INDEX) ) continue;
 
         electron_candidates->emplace_back( electron_candidate );
+        electron_counter++;
+        if( electron_counter >= cfg.ELECTRON_N_MAX ) break;
       }
 
       MSG_DEBUG("hzura::ObjectPreselector.preselect_electrons(): electron_candidates.size() =", electron_candidates->size());
@@ -159,6 +163,7 @@ namespace hzura {
       std::shared_ptr< std::vector<hzura::Muon> > muon_candidates ( new std::vector<hzura::Muon> );
       hzura::Muon   muon_candidate;
 
+      int muon_counter = 0;
       for(int i = 0, i_max = event->GetMuonsN(); i < i_max; i++){
         if( event->GetMuonPt(i) < cfg.MUON_PT_CUT ) continue;
         if( TMath::Abs( event->GetMuonEta(i) ) > cfg.MUON_ETA_CUT ) continue;
@@ -181,6 +186,8 @@ namespace hzura {
         if( not hzura::glob::is_data ) hzura::set_muon_sfs( muon_candidate, muon_sf_calculator, cfg.MUON_ISOID_CUT );
 
         muon_candidates->emplace_back( muon_candidate );
+        muon_counter++;
+        if( muon_counter >= cfg.MUON_N_MAX ) break;
       }
       MSG_DEBUG("hzura::ObjectPreselector.preselect_muons(): muon_candidates.size() =", muon_candidates->size());
       return muon_candidates;
@@ -203,6 +210,7 @@ namespace hzura {
       hzura::Jet      jet_candidate;
       bool btagged = false;
 
+      int btag_counter = 0, ltag_counter = 0;
       jec_unc_calculator.SetActiveJetCorrectionUncertainty( cfg.JET_JEC_TYPE );
       for(int i = 0, i_max = event->GetJetsN(); i < i_max; i++){
         jet_candidate.Init( i );
@@ -238,18 +246,30 @@ namespace hzura {
         if( cfg.JET_BTAGGER == "DeepCSV" ){
           hzura::set_jet_btag_sfs( jet_candidate, btag_sf_calculator_b, btag_sf_calculator_c, btag_sf_calculator_l ); 
           if(cfg.JET_BTAGGER_ID == hzura::id_names::loose and  jet_candidate.btag_DeepCSV_isLoose )   btagged = true;
-          if(cfg.JET_BTAGGER_ID == hzura::id_names::medium and jet_candidate.btag_DeepCSV_isMedium ) btagged = true;
+          if(cfg.JET_BTAGGER_ID == hzura::id_names::medium and jet_candidate.btag_DeepCSV_isMedium )  btagged = true;
           if(cfg.JET_BTAGGER_ID == hzura::id_names::tight and  jet_candidate.btag_DeepCSV_isTight )   btagged = true;
         }
         else if( cfg.JET_BTAGGER == "DeepFlavour" ){
           hzura::set_jet_btag_sfs( jet_candidate, btag_sf_calculator_b, btag_sf_calculator_c, btag_sf_calculator_l ); 
           if(cfg.JET_BTAGGER_ID == hzura::id_names::loose and  jet_candidate.btag_DeepFlavour_isLoose )   btagged = true;
-          if(cfg.JET_BTAGGER_ID == hzura::id_names::medium and jet_candidate.btag_DeepFlavour_isMedium ) btagged = true;
+          if(cfg.JET_BTAGGER_ID == hzura::id_names::medium and jet_candidate.btag_DeepFlavour_isMedium )  btagged = true;
           if(cfg.JET_BTAGGER_ID == hzura::id_names::tight and  jet_candidate.btag_DeepFlavour_isTight )   btagged = true;
         }
 
-        if( btagged ) hzura_event.bjet_candidates->emplace_back( jet_candidate );
-        else          hzura_event.ljet_candidates->emplace_back( jet_candidate );
+        if( btagged ) { 
+          if( btag_counter < cfg.JET_BTAG_N_MAX ) {
+            hzura_event.bjet_candidates->emplace_back( jet_candidate );
+            btag_counter++;
+          }
+        }
+        else { 
+          if( ltag_counter < cfg.JET_LTAG_N_MAX ) {
+            hzura_event.ljet_candidates->emplace_back( jet_candidate ); 
+            ltag_counter++;
+          }
+        }
+ 
+        if( ltag_counter >= cfg.JET_LTAG_N_MAX and btag_counter >= cfg.JET_BTAG_N_MAX  ) break;
       }
 
       if(btag_eff_reader.Valid()){
@@ -290,21 +310,21 @@ namespace hzura {
           const hzura::EventCfg & cfg_j = cfgs[j];
           const HzuraEvent & event_j = answer[j];
 
-          if( cfg_i.SamePhotons( cfg_j )  )   event_i.photon_candidates   = event_j.photon_candidates;
-          if( cfg_i.SameElectrons( cfg_j )  ) event_i.electron_candidates = event_j.electron_candidates;
-          if( cfg_i.SameMuons( cfg_j )  )     event_i.muon_candidates     = event_j.muon_candidates;
-          if( cfg_i.SameJets( cfg_j )  ) { 
+          if( cfg_i.SamePhotons( cfg_j ) )   event_i.photon_candidates   = event_j.photon_candidates;
+          if( cfg_i.SameElectrons( cfg_j ) ) event_i.electron_candidates = event_j.electron_candidates;
+          if( cfg_i.SameMuons( cfg_j ) )     event_i.muon_candidates     = event_j.muon_candidates;
+          if( cfg_i.SameJets( cfg_j ) ) { 
             event_i.ljet_candidates     = event_j.ljet_candidates;
             event_i.bjet_candidates     = event_j.bjet_candidates;
           }
-          if( cfg_i.SameGenParticles( cfg_j )  ) event_i.genparticles = event_j.genparticles;
+          if( cfg_i.SameGenParticles( cfg_j ) ) event_i.genparticles = event_j.genparticles;
         }
 
         if( not event_i.photon_candidates   ) event_i.photon_candidates   = PreselectFlashggPhotons( cfg_i ); // PreselectPhotons( cfg_i ); FIXME - ok for now
         if( not event_i.electron_candidates ) event_i.electron_candidates = PreselectElectrons( cfg_i );
         if( not event_i.muon_candidates     ) event_i.muon_candidates     = PreselectMuons( cfg_i );
         if( not event_i.ljet_candidates or not event_i.bjet_candidates )    PreselectJets( cfg_i, event_i );
-        if( not event_i.genparticles ) event_i.genparticles = PreselectGenParticles( cfg_i );
+        if( not event_i.genparticles )        event_i.genparticles        = PreselectGenParticles( cfg_i );
 
         // in any cases calculate MET
         event_i.met = event_met;

@@ -11,6 +11,33 @@ namespace hzura {
     tight,
   };
 
+  class RunParameters {
+    public:
+    RunParameters( string raw_values ){
+      std::vector<std::string> param_pairs;
+      pm::split_string( raw_values, param_pairs, "," );
+
+      for(int i = 0; i < param_pairs.size(); i++){
+        std::vector<std::string> opts;
+        pm::split_string( param_pairs.at(i), opts, "=");
+        if( opts.size() != 2){
+          msg_err("hzura::RunParameters(): Can't parse option", param_pairs.at(i));
+          continue;
+        }
+        values[ opts[0] ] = opts[1];
+        msg_err("hzura::RunParameters(): set option", opts[0], "=", opts[1]);
+      }
+    }
+
+    string Get(string pname){
+      map<string, string>::iterator it = values.find( pname );
+      if( it == values.end() ) return "";
+      return it->second;
+    }
+    
+    map<string, string> values;
+  };
+
   namespace glob {
   
     bool is_data;
@@ -19,6 +46,10 @@ namespace hzura {
     // Events * event;
     ReaderGRINDER * event;
     TRandom3 randGen;
+    RunParameters * parameters;
+
+    vector<LHAPDF::PDF*> PDFs_gen, PDFs_target;
+    int PDFs_target_n_replics;
 
     void Init(const string & era, ReaderGRINDER * event){
 
@@ -43,6 +74,7 @@ namespace hzura {
     std::vector<int> GENPARTICLES_SELECT_IDS;
 
     // PHOTONS OPTIONS =- -= =- -= =- -= =- -=
+    int PHOTON_N_MAX;
     std::string PHOTON_ENERGY_CORRECTION_TYPE; // "ecalEnergyPreCorr" "ecalEnergyPostCorr" "energyScaleUp" "energyScaleDown" "energyScaleStatUp" "energyScaleStatDown" "energyScaleSystUp"
                                                // "energyScaleSystDown" "energyScaleGainUp" "energyScaleGainDown" "energyScaleEtUp" "energyScaleEtDown" 
                                                // "energySigmaUp" "energySigmaDown" "energySigmaPhiUp" "energySigmaPhiDown" "energySigmaRhoUp" "energySigmaRhoDown"
@@ -53,6 +85,7 @@ namespace hzura {
     int PHOTON_ID_CUT;                         // id_names::loose id_names::medium id_names::tight
     bool PHOTON_SET_SFS;
     // ELECTRONS OPTIONS =- -= =- -= =- -= =- -=
+    int ELECTRON_N_MAX;
     std::string ELECTRON_ENERGY_CORRECTION_TYPE; // same as PHOTON_ENERGY_CORRECTION_TYPE
     Float_t ELECTRON_PT_CUT;
     Float_t ELECTRON_ETA_CUT;
@@ -60,10 +93,13 @@ namespace hzura {
     Float_t ELECTRON_ETA_HOLE_CUT_END;
     int ELECTRON_ID_CUT;                       // id_names::loose id_names::medium id_names::tight
     // MUONS OPTIONS =- -= =- -= =- -= =- -=
+    int MUON_N_MAX;
     Float_t MUON_PT_CUT;
     Float_t MUON_ETA_CUT;
     int MUON_ISOID_CUT;                        // id_names::loose id_names::medium id_names::tight
     // JETS OPTIONS =- -= =- -= =- -= =- -=
+    int JET_LTAG_N_MAX;
+    int JET_BTAG_N_MAX;
     Float_t JET_PT_CUT;
     Float_t JET_ETA_CUT;
     int JET_PUJID_CUT;                         // id_names::none id_names::loose id_names::medium id_names::tight
@@ -88,6 +124,7 @@ namespace hzura {
       GENPARTICLES_SELECT_IDS = {};
       // PHOTONS OPTIONS =- -= =- -= =- -= =- -=
       FLASHGG_DIPHOTON_INDEX = -1;
+      PHOTON_N_MAX = 999;
       PHOTON_PT_CUT = 0;
       PHOTON_ETA_CUT = 9999;
       PHOTON_ETA_HOLE_CUT_START = -999;
@@ -96,6 +133,7 @@ namespace hzura {
       PHOTON_ENERGY_CORRECTION_TYPE = "";
       PHOTON_SET_SFS = true;
       // ELECTRONS OPTIONS =- -= =- -= =- -= =- -=
+      ELECTRON_N_MAX = 999;
       ELECTRON_ENERGY_CORRECTION_TYPE = "";
       ELECTRON_PT_CUT = 0;
       ELECTRON_ETA_CUT = 9999;
@@ -103,10 +141,13 @@ namespace hzura {
       ELECTRON_ETA_HOLE_CUT_END = -999;
       ELECTRON_ID_CUT = id_names::none;
       // MUONS OPTIONS =- -= =- -= =- -= =- -=
+      MUON_N_MAX = 999;
       MUON_PT_CUT = 0;
       MUON_ETA_CUT = 999;
       MUON_ISOID_CUT = id_names::none;
       // JETS OPTIONS =- -= =- -= =- -= =- -=
+      JET_LTAG_N_MAX = 999;
+      JET_BTAG_N_MAX = 999;
       JET_PT_CUT = 0;
       JET_ETA_CUT = 9999;
       JET_ID_CUT = id_names::none;
@@ -142,6 +183,7 @@ namespace hzura {
       if( PHOTON_ETA_HOLE_CUT_START != other.PHOTON_ETA_HOLE_CUT_START ) return false;
       if( PHOTON_ETA_HOLE_CUT_END != other.PHOTON_ETA_HOLE_CUT_END ) return false;
       if( PHOTON_ID_CUT != other.PHOTON_ID_CUT ) return false;
+      if( PHOTON_N_MAX != other.PHOTON_N_MAX ) return false;
       if( FLASHGG_DIPHOTON_INDEX != other.FLASHGG_DIPHOTON_INDEX ) return false;
       return true;
     }
@@ -153,6 +195,7 @@ namespace hzura {
       if( ELECTRON_ETA_HOLE_CUT_START != other.ELECTRON_ETA_HOLE_CUT_START ) return false;
       if( ELECTRON_ETA_HOLE_CUT_END != other.ELECTRON_ETA_HOLE_CUT_END ) return false;
       if( ELECTRON_ID_CUT != other.ELECTRON_ID_CUT ) return false;
+      if( ELECTRON_N_MAX != other.ELECTRON_N_MAX ) return false;
       if( FLASHGG_DIPHOTON_INDEX != other.FLASHGG_DIPHOTON_INDEX ) return false;
       return true;
     }
@@ -161,6 +204,7 @@ namespace hzura {
       if( MUON_PT_CUT != other.MUON_PT_CUT ) return false;
       if( MUON_ETA_CUT != other.MUON_ETA_CUT ) return false;
       if( MUON_ISOID_CUT != other.MUON_ISOID_CUT ) return false;
+      if( MUON_N_MAX != other.MUON_N_MAX ) return false;
       if( FLASHGG_DIPHOTON_INDEX != other.FLASHGG_DIPHOTON_INDEX ) return false;
       return true;
     }
@@ -175,6 +219,8 @@ namespace hzura {
       if( JET_JEC_TYPE != other.JET_JEC_TYPE ) return false;
       if( JET_JEC_DIR != other.JET_JEC_DIR ) return false;
       if( JET_PUJID_CUT!= other.JET_PUJID_CUT ) return false;
+      if( JET_LTAG_N_MAX!= other.JET_LTAG_N_MAX ) return false;
+      if( JET_BTAG_N_MAX!= other.JET_BTAG_N_MAX ) return false;
       return true;
     }
 

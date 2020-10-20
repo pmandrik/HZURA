@@ -2,22 +2,53 @@
 source /cvmfs/sft.cern.ch/lcg/app/releases/ROOT/6.22.00/x86_64-centos7-gcc48-opt/bin/thisroot.sh
 source /cvmfs/sft.cern.ch/lcg/contrib/gcc/4.9/x86_64-slc6-gcc49-opt/setup.sh
 
+export LHAPDF_DATA_PATH=/cvmfs/cms.cern.ch/slc6_amd64_gcc700/external/lhapdf/6.2.1/share/LHAPDF/
+
 runmode="$1"
 
 run_anal(){
   input=$1
   output=$2
   type=$3
+  other_params=$4
 
   # root -l -b -q "hzura_make_interface.cc(\""$input"\")"
-  echo "gROOT->LoadMacro( \"hzura.cc\" ); main_root_wrapper(\"$input\", \"$output\", \"$type\", \"$runmode\");" | root -l -b 
+  echo "gInterpreter->AddIncludePath(\"-I/cvmfs/cms.cern.ch/slc7_amd64_gcc493/external/lhapdf/6.1.5/include/\"); gInterpreter->Load(\"/cvmfs/cms.cern.ch/slc7_amd64_gcc493/external/lhapdf/6.1.5/lib/libLHAPDF.so\"); gROOT->LoadMacro( \"hzura.cc\" ); main_root_wrapper(\"$input\", \"$output\", \"$type\", \"$runmode\", \"$other_params\");" | root -l -b 
 }
 
-inpdir=/eos/user/p/pmandrik/HHWWgg/samples_2017_fnal_v0
-outdir=../output_2017_c1
+######################## 2018 ######################## 
+inpdir=/eos/user/p/pmandrik/HHWWgg/samples_2018_fnal_v0
+outdir=/eos/user/p/pmandrik/HHWWgg_hzura/output_2018_c0
 mkdir -p $outdir
 postfix=v0
 
+run_anal $inpdir/GluGluHToGG_M125_TuneCP5_13TeV-amcatnloFXFX-pythia8.root                  $outdir/2018_ggH_$postfix.root       B "TARGET_PDF=NNPDF31_nnlo_hessian_pdfas,TARGET_PDF_SETSIZE=100,GEN_PDF=NNPDF31_nnlo_hessian_pdfas"
+run_anal $inpdir/VHToGG_M125_13TeV_amcatnloFXFX_madspin_pythia8.root                       $outdir/2018_VH_$postfix.root        B "TARGET_PDF=NNPDF31_nnlo_hessian_pdfas,TARGET_PDF_SETSIZE=100,GEN_PDF=NNPDF31_nnlo_hessian_pdfas"
+run_anal $inpdir/VBFHToGG_M125_13TeV_amcatnlo_pythia8.root                                 $outdir/2018_VBFH_$postfix.root      B "TARGET_PDF=NNPDF31_nnlo_hessian_pdfas,TARGET_PDF_SETSIZE=100,GEN_PDF=NNPDF31_nnlo_hessian_pdfas"
+run_anal $inpdir/ttHJetToGG_M125_13TeV_amcatnloFXFX_madspin_pythia8.root                   $outdir/2018_ttH_$postfix.root       B "TARGET_PDF=NNPDF31_nnlo_hessian_pdfas,TARGET_PDF_SETSIZE=100,GEN_PDF=NNPDF31_nnlo_hessian_pdfas"
+
+run_anal $inpdir/DiPhotonJetsBox_MGG-80toInf_13TeV-Sherpa.root                             $outdir/2018_ggjets_$postfix.root    B
+run_anal $inpdir/GJet_Pt-20to40_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root    $outdir/2018_gjets1_$postfix.root    B
+run_anal $inpdir/GJet_Pt-40toInf_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root   $outdir/2018_gjets2_$postfix.root    B
+
+run_anal $inpdir/data_2018.root                                                            $outdir/data_2018_$postfix.root      D
+
+exit
+######################## 2017 ######################## 
+inpdir=/eos/user/p/pmandrik/HHWWgg/samples_2017_fnal_v0
+outdir=/eos/user/p/pmandrik/HHWWgg_hzura/output_2017_c2
+mkdir -p $outdir
+postfix=v0
+
+run_anal $inpdir/output_GluGluHToGG.root                                         $outdir/hzura_2017_GluGluHToGG_M125_13TeV_amcatnloFXFX_pythia8_$postfix.root          B                  
+run_anal $inpdir/output_ttHJetToGG_M125_13TeV_amcatnloFXFX_madspin_pythia8.root  $outdir/hzura_2017_ttHJetToGG_M125_13TeV_amcatnloFXFX_madspin_pythia8_$postfix.root   B
+run_anal $inpdir/output_VBFHToGG_M125_13TeV_amcatnlo_pythia8.root                $outdir/hzura_2017_VBFHToGG_M125_13TeV_amcatnlo_pythia8_$postfix.root                 B
+run_anal $inpdir/output_VHToGG_M125_13TeV_amcatnloFXFX_madspin_pythia8.root      $outdir/hzura_2017_VHToGG_M125_13TeV_amcatnloFXFX_madspin_pythia8_$postfix.root       B
+
+exit
+run_anal $inpdir/$2.root          $outdir/hzura_2017_$2_fsim_$postfix.root S
+
+exit
 run_anal $inpdir/SM.root          $outdir/hzura_2017_SM_fsim_$postfix.root S
 run_anal $inpdir/1.root           $outdir/hzura_2017_1_fsim_$postfix.root S
 run_anal $inpdir/2.root           $outdir/hzura_2017_2_fsim_$postfix.root S

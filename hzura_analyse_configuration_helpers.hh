@@ -30,7 +30,7 @@ namespace hzura {
     // efficiency
     SFFileReader *sfs  = new SFFileReader( "data/PUJID/scalefactorsPUID_81Xtraining.root" );
 
-    if(hzura::glob::year_era == "2017"){
+    if(hzura::glob::year_era == "2017" or true){
       answer.AddReader( "lmt",  sfs );
       answer.GetSF_eff_loose    = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_alt(pt, eta, unc, "lmt", "h2_eff_sf2017_L", "lmt", "h2_eff_sf2017_L_Systuncty");  };
       answer.GetSF_eff_medium   = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_alt(pt, eta, unc, "lmt", "h2_eff_sf2017_M", "lmt", "h2_eff_sf2017_M_Systuncty");  };
@@ -52,12 +52,15 @@ namespace hzura {
 
     if(hzura::glob::year_era == "2016"){
       if( tagger == "DeepCSV" )     answer.AddFile("DeepCSV", "data/jets_sf_2016/DeepCSV_2016LegacySF_WP_V1.csv"); // jets_sf_2016/DeepCSV_2016LegacySF_V1.csv
+      if( tagger == "DeepFlavour" ) answer.AddFile("DeepFlavour", "data/jets_sf_2016/DeepJet_2016LegacySF_WP_V1.csv");
     }
     if(hzura::glob::year_era == "2017"){
       if( tagger == "DeepCSV" )     answer.AddFile("DeepCSV", "data/jets_sf_2017/DeepCSV_94XSF_WP_V4_B_F.csv");
       if( tagger == "DeepFlavour" ) answer.AddFile("DeepFlavour", "data/jets_sf_2017/DeepFlavour_94XSF_WP_V3_B_F.csv");
     }
-    // if(hzura::glob::year_era == "2018") TODO
+    if(hzura::glob::year_era == "2018") {
+      if( tagger == "DeepFlavour" ) answer.AddFile("DeepFlavour", "data/jets_sf_2018/DeepJet_102XSF_WP_V1.csv");
+    }
     return answer;
   }
 
@@ -86,9 +89,10 @@ namespace hzura {
 
   // electrons SFs .., TODO 2017 2018
   SFCalculator get_electrons_sf_reader(){
-    // https://twiki.cern.ch/twiki/bin/viewauth/CMS/EgammaIDRecipesRun2#Electron_efficiencies_and_scale
+    // https://twiki.cern.ch/twiki/bin/viewauth/CMS/EgammaIDRecipesRun2#Electron_efficiencies_and_scale 
     SFCalculator answer; 
 
+    msg("hzura::get_electrons_sf_reader() ============================================================================================ start");
     if(hzura::glob::year_era == "2016"){ // Fall17V2 2017 ID ???
       SFFileReader *sf_l  = new SFFileReader( "data/electrons_sf_2016/2016LegacyReReco_ElectronLoose_Fall17V2.root" , 1.0, false, 1.0);
       SFFileReader *sf_m  = new SFFileReader( "data/electrons_sf_2016/2016LegacyReReco_ElectronMedium_Fall17V2.root", 1.0, false, 1.0);
@@ -103,7 +107,6 @@ namespace hzura {
       answer.hname_tight  = "EGamma_SF2D";
     }
     if(hzura::glob::year_era == "2017"){ // Fall17V2 2017 ID ???
-      msg("============================================================================================");
       SFFileReader *sf_l  = new SFFileReader( "data/electrons_sf_2017/2017_ElectronLoose.root"  , 1.0, false, 1.0);
       SFFileReader *sf_m  = new SFFileReader( "data/electrons_sf_2017/2017_ElectronMedium.root" , 1.0, false, 1.0);
       SFFileReader *sf_t  = new SFFileReader( "data/electrons_sf_2017/2017_ElectronTight.root"  , 1.0, false, 1.0);
@@ -115,8 +118,21 @@ namespace hzura {
       answer.hname_loose  = "EGamma_SF2D";
       answer.hname_medium = "EGamma_SF2D";
       answer.hname_tight  = "EGamma_SF2D";
-      msg("============================================================================================");
     }
+    if(hzura::glob::year_era == "2018"){ // Fall17V2 2017 ID ???
+      SFFileReader *sf_l  = new SFFileReader( "data/electrons_sf_2018/2018_ElectronLoose.root"  , 1.0, false, 1.0);
+      SFFileReader *sf_m  = new SFFileReader( "data/electrons_sf_2018/2018_ElectronMedium.root" , 1.0, false, 1.0);
+      SFFileReader *sf_t  = new SFFileReader( "data/electrons_sf_2018/2018_ElectronTight.root"  , 1.0, false, 1.0);
+
+      answer.AddReader( "l",  sf_l );
+      answer.AddReader( "m",  sf_m );
+      answer.AddReader( "t",  sf_t );
+
+      answer.hname_loose  = "EGamma_SF2D";
+      answer.hname_medium = "EGamma_SF2D";
+      answer.hname_tight  = "EGamma_SF2D";
+    }
+    msg("hzura::get_electrons_sf_reader() ============================================================================================ end");
     
     return answer;
   }
@@ -187,6 +203,32 @@ namespace hzura {
       answer.GetSF_iso_tight  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_iso(pt, TMath::Abs(eta), unc, "NUM_TightRelIso_DEN_TightIDandIPCut_pt_abseta"); }; 
 
       vector<SFFileReader *> readers = { sf_id, sf_iso, sf_id_err, sf_iso_err };
+      for( auto reader : readers ){
+        reader->msg_if_outside_range   = false;
+        reader->value_if_outside_range = 1.0;
+      }
+    }
+
+    if(hzura::glob::year_era == "2018"){
+      // https://twiki.cern.ch/twiki/bin/view/CMS/MuonReferenceEffs2018
+      SFFileReader *sf_id  = new SFFileReader("data/muons_sf_2018/RunABCD_SF_ID.root");
+      SFFileReader *sf_iso = new SFFileReader("data/muons_sf_2018/RunABCD_SF_ISO.root");
+
+      answer.AddReader( "id",  sf_id  );
+      answer.AddReader( "iso", sf_iso );
+
+      answer.GetSF_id = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc, const std::string & hname){ return answer.GetSF(eta, pt, "id", hname) + unc * answer.GetErr(eta, pt, "id", hname); };
+      answer.GetSF_iso  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc, const std::string & hname){ return answer.GetSF(eta, pt, "iso", hname) + unc * answer.GetErr(eta, pt, "iso", hname); };
+
+      answer.GetSF_id_loose  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_id(pt, TMath::Abs(eta), unc, "NUM_LooseID_DEN_TrackerMuons_pt_abseta");  };
+      // answer.GetSF_id_medium = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_id(pt, TMath::Abs(eta), unc, "NUM_MediumID_DEN_genTracks_pt_abseta"); };
+      answer.GetSF_id_tight  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_id(pt, TMath::Abs(eta), unc, "NUM_TightID_DEN_TrackerMuons_pt_abseta");  }; 
+
+      answer.GetSF_iso_loose  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_iso(pt, TMath::Abs(eta), unc, "NUM_LooseRelIso_DEN_LooseID_pt_abseta"); };
+      // answer.GetSF_iso_medium = [](const Float_t & eta, const Float_t & pt, const int & unc) { return GetSF_iso(eta, pt, unc, "NUM_MediumID_DEN_genTracks_eta_pt") };
+      answer.GetSF_iso_tight  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_iso(pt, TMath::Abs(eta), unc, "NUM_TightRelIso_DEN_TightIDandIPCut_pt_abseta"); }; 
+
+      vector<SFFileReader *> readers = { sf_id, sf_iso };
       for( auto reader : readers ){
         reader->msg_if_outside_range   = false;
         reader->value_if_outside_range = 1.0;
