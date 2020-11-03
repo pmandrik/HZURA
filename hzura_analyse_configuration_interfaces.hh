@@ -110,7 +110,7 @@ namespace hzura {
           hist->SetDirectory(0);
           names_x_hists[ key->GetName() ] = hist;
 
-          pm::msg( "hzura::SFReader(): add", key->GetName() );
+          pm::msg( "hzura::SFReader(): add", key->GetName(), "x[",hist->GetXaxis()->GetXmin(), hist->GetXaxis()->GetXmax(), "], y[", hist->GetYaxis()->GetXmin(), hist->GetYaxis()->GetXmax(), "]" );
         }
       
         file->Close();
@@ -129,11 +129,11 @@ namespace hzura {
         }
         TH2* hist = it_hist->second;
         if( eta < hist->GetXaxis()->GetXmin() or eta > hist->GetXaxis()->GetXmax() ){
-          if(msg_if_outside_range) msg_err("hzura::SFReader.GetSF: point outside range ", "\"" + hist_name + "\",", eta, "[" , hist->GetXaxis()->GetXmin(), hist->GetXaxis()->GetXmax(), "]");
+          if(msg_if_outside_range) msg_err("hzura::SFReader.GetSF: point X-axis outside range ", "\"" + hist_name + "\",", eta, "[" , hist->GetXaxis()->GetXmin(), hist->GetXaxis()->GetXmax(), "]");
           return value_if_outside_range;
         }
         if( pt < hist->GetYaxis()->GetXmin() or pt > hist->GetYaxis()->GetXmax() ){
-          if(msg_if_outside_range) if(msg_if_outside_range)msg_err("hzura::SFReader.GetSF: point outside range ", "\"" + hist_name + "\",", pt, "[" , hist->GetYaxis()->GetXmin(), hist->GetYaxis()->GetXmax(), "]");
+          if(msg_if_outside_range) if(msg_if_outside_range) msg_err("hzura::SFReader.GetSF: point outside Y-axis range ", "\"" + hist_name + "\",", pt, "[" , hist->GetYaxis()->GetXmin(), hist->GetYaxis()->GetXmax(), "]");
           return value_if_outside_range;
         }
         return weight * hist->GetBinContent( hist->FindBin(eta, pt) );
@@ -165,7 +165,7 @@ namespace hzura {
     SFCalculator(){}
 
     void AddReader(std::string name, SFFileReader* reader){
-      MSG_DEBUG("hzura::SFReader process ... ", name );
+      MSG_DEBUG("hzura::SFCalculator.AddReader() ... ", name, reader );
 
       sf_readers[ name ] = reader;
       fname_loose  = "l";

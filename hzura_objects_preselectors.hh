@@ -17,7 +17,7 @@ namespace hzura {
       pileup_sf_calculator   = get_pileup_sf_reader();
       jec_unc_calculator     = get_jec_uncertanties();
       pujid_reader           = get_pujid_reader();
-
+msg("!!!!");
       verbose_lvl = 1; // FIXME
     }
 
@@ -205,6 +205,9 @@ namespace hzura {
       // cfg.JET_JEC_TYPE
       // cfg.JET_JEC_DIR
 
+      // msg( "is_data", hzura::glob::is_data );
+      // msg( cfg.JET_PUJID_CUT, hzura::id_names::none );
+
       hzura_event.ljet_candidates = std::shared_ptr< std::vector<hzura::Jet> > ( new std::vector<hzura::Jet> );
       hzura_event.bjet_candidates = std::shared_ptr< std::vector<hzura::Jet> > ( new std::vector<hzura::Jet> );
       hzura::Jet      jet_candidate;
@@ -214,8 +217,8 @@ namespace hzura {
       jec_unc_calculator.SetActiveJetCorrectionUncertainty( cfg.JET_JEC_TYPE );
       for(int i = 0, i_max = event->GetJetsN(); i < i_max; i++){
         jet_candidate.Init( i );
-        // cout << i << " " << jet_candidate.tlv.Pt() << " " << jet_candidate.tlv.Eta() << endl;
-        if( TMath::Abs(jet_candidate.tlv.Eta()) > 5.1 ) cout << i << " " << jet_candidate.tlv.Pt() << " " << jet_candidate.tlv.Eta() << endl;
+        // cout << i << " " << jet_candidate.tlv.Pt() << " " << jet_candidate.tlv.Eta() << " " << event->GetJetIsTight(i) << endl;
+        // if( TMath::Abs(jet_candidate.tlv.Eta()) > 5.1 ) cout << i << " " << jet_candidate.tlv.Pt() << " " << jet_candidate.tlv.Eta() << endl;
 
         // Evaluate JER smearing after nominal JEC is applied but before systematic variaion in JEC - only for MC FIXME
         if( not hzura::glob::is_data ) apply_jer_smearing( jet_candidate, cfg.JET_JER ); // such as "central"
@@ -392,6 +395,8 @@ namespace hzura {
 
   // FIND B_TAGGING EFFICIENCY ===============================================================================================
   void calc_btagging_efficiency(std::string outname, const EventCfg & cfg, const PileUpSFReader & pileup_sf_calculator, const int & N_bins_pt, const double & pt_min, const double & pt_max, const int & N_bins_eta, const double & eta_min, const double & eta_max){
+    msg("hzura::calc_btagging_efficiency() ... ");
+    
     TFile * outfile = new TFile(outname.c_str(), "RECREATE");
     std::vector<TH2D*> tots, tags, effs;
     for(int i = 0; i < 6; i++){
@@ -415,8 +420,8 @@ namespace hzura {
       if( not (entry % 1000) ) pm::msg_progress( float(entry)/entrys );
 
       vector<hzura::HzuraEvent> hzura_events = preselector.PreselectEvents( analyses_configs );
-      const hzura::HzuraEvent & hevents = hzura_events.at(0); 
-      const hzura::EventCfg   & config  = analyses_configs.at(0); 
+      const hzura::HzuraEvent & hevents = hzura_events.at(0); // msg(1); 
+      const hzura::EventCfg   & config  = analyses_configs.at(0); // msg(2);
 
       std::vector<hzura::Jet>       & ljets     = *(hevents.ljet_candidates);
       std::vector<hzura::Jet>       & bjets     = *(hevents.bjet_candidates);

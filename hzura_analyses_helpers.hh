@@ -324,7 +324,7 @@ namespace hzura {
       analyses_configs.push_back( cfg_METDown );
 
       // analyses_configs.push_back( cfg_NO_MET_XY );
-      analyses_configs.push_back( cfg_PUJID );
+      // analyses_configs.push_back( cfg_PUJID );
     }
 
     void add_systematic_cfgs_flashgg(const EventCfg & cfg, std::vector<hzura::EventCfg> & analyses_configs){
@@ -340,35 +340,109 @@ namespace hzura {
     }
 
   // flashgg/MicroAOD/python/flashggPDFWeightObject_cfi.py
-  void calc_flashgg_lhe_uncertanties(Float_t & PDF_up, Float_t & PDF_dn, Float_t & muR_up, Float_t & muR_dn, Float_t & muF_up, Float_t & muF_dn, Float_t & muRmuF_up, Float_t & muRmuF_dn, Float_t & alpha_s_dn, Float_t & alpha_s_up){
+  void calc_flashgg_lhe_uncertanties(Float_t & PDF_up, Float_t & PDF_dn, Float_t & muR_up, Float_t & muR_dn, Float_t & muF_up, Float_t & muF_dn, Float_t & muRmuF_up, Float_t & muRmuF_dn, Float_t & alpha_s_dn, Float_t & alpha_s_up, bool hessian=true){
     std::vector<Float_t> * weights = & hzura::glob::event->event->flashgg_mc_weights;
     int N_weights = weights->size();
+    if( N_weights < 9 ) return;
 
     int N_pdf_weights = weights->at( N_weights-2 );
     int N_alpha_weights = weights->at( N_weights-1 );
     int N_scale_weights = weights->at( N_weights-3 );
+    
+    double muRmuF_nominal = weights->at( 0 );
+    muR_up         = weights->at( 3 ) / muRmuF_nominal;
+    muR_dn         = weights->at( 6 ) / muRmuF_nominal;
+    muF_up         = weights->at( 1 ) / muRmuF_nominal;
+    muF_dn         = weights->at( 2 ) / muRmuF_nominal;
+    muRmuF_up      = weights->at( 4 ) / muRmuF_nominal;
+    muRmuF_dn      = weights->at( 8 ) / muRmuF_nominal;
+    if(hzura::glob::year == 2016 and hzura::glob::MADGRAPH){ // 292000 MG 306000 PW
+/*
+    <weight MUF="1.0" MUR="2.0" PDF="292000" id="1006"> MUR=2.0  </weight>
+    <weight MUF="1.0" MUR="0.5" PDF="292000" id="1011"> MUR=0.5  </weight>
+    <weight MUF="2.0" MUR="1.0" PDF="292000" id="1016"> MUF=2.0  </weight>
+    <weight MUF="2.0" MUR="2.0" PDF="292000" id="1021"> MUR=2.0 MUF=2.0  </weight>
+    <weight MUF="2.0" MUR="0.5" PDF="292000" id="1026"> MUR=0.5 MUF=2.0  </weight>
+    <weight MUF="0.5" MUR="1.0" PDF="292000" id="1031"> MUF=0.5  </weight>
+    <weight MUF="0.5" MUR="2.0" PDF="292000" id="1036"> MUR=2.0 MUF=0.5  </weight>
+    <weight MUF="0.5" MUR="0.5" PDF="292000" id="1041"> MUR=0.5 MUF=0.5  </weight>
+*/
+      muR_up         = weights->at( 1 ) / muRmuF_nominal;
+      muR_dn         = weights->at( 2 ) / muRmuF_nominal;
+      muF_up         = weights->at( 3 ) / muRmuF_nominal;
+      muF_dn         = weights->at( 6 ) / muRmuF_nominal;
+      muRmuF_up      = weights->at( 4 ) / muRmuF_nominal;
+      muRmuF_dn      = weights->at( 8 ) / muRmuF_nominal;
+    }
+    
+    if(hzura::glob::PRINT_LHE_WEIGHTS){
+      msg( "hzura::calc_flashgg_lhe_uncertanties(): LHE weights " );
+      for(int i = 0; i < weights->size(); i++) msg(i, weights->at(i) );
+    }
 
     // https://arxiv.org/pdf/1510.03865.pdf
-    double PDF_nominal = 1.;
+    int pdf_weights_start_index = N_scale_weights;
+    int pdf_weights_end_index   = N_scale_weights + N_pdf_weights;
+    double PDF_nominal = weights->at( pdf_weights_start_index );
     double PDF_sum     = 0;
     double PDF_average = 0;
-    for( int i = N_alpha_weights+N_scale_weights; i < weights->size() - 3 - N_alpha_weights; i++){
+    for( int i = pdf_weights_start_index; i < pdf_weights_end_index; i++){
       PDF_sum     += TMath::Power( PDF_nominal - weights->at(i), 2 ) ;
       PDF_average += weights->at(i) ;
       // cout << i << " ->" << weights->at(i) << endl;
     }
     double PDF_error_hessian = TMath::Sqrt( PDF_sum );
     // msg( PDF_sum );
+    
+    // alphas_s calculated with the same the PDF set BUT FLASHGG RESCALE PDF WEIGHTS !!! BECAUSE OF THIS RESCALE take ALPHA_S as symmetric
+    alpha_s_dn = -1;
+    alpha_s_up = -1;
+    if(N_alpha_weights == 2 and N_pdf_weights > 0){
+      double ave = (weights->at(weights->size()-5 )+weights->at(weights->size()-4 ))*0.5;
+      alpha_s_dn = weights->at(weights->size()-5 ) / ave ;
+      alpha_s_up = weights->at(weights->size()-4 ) / ave ;
+    } else {
+      // msg("hzura::calc_flashgg_lhe_uncertanties(): No alpha_S from flashgg lhe weight collection :C ... ");
+    }
+    
+    if( hessian ){
+      PDF_up = (PDF_nominal + PDF_error_hessian)/PDF_nominal ;
+      PDF_dn = (PDF_nominal - PDF_error_hessian)/PDF_nominal ;
+      return ;
+    }
 
     PDF_average = PDF_average / N_pdf_weights;
     PDF_sum     = 0;
-    for( int i = N_alpha_weights+N_scale_weights; i < weights->size()-3; i++)
+    for( int i = pdf_weights_start_index; i < pdf_weights_end_index; i++)
       PDF_sum += TMath::Power( weights->at(i) - PDF_average , 2);
     double PDF_error_mc = TMath::Sqrt( PDF_sum / (N_pdf_weights - 1) );
+    PDF_up = (PDF_nominal + PDF_error_mc)/PDF_nominal;
+    PDF_dn = (PDF_nominal - PDF_error_mc)/PDF_nominal;
 
-    // msg(PDF_error_hessian, PDF_error_mc, PDF_average , PDF_sum );
+    // msg("PDF_error_hessian, PDF_error_mc, PDF_average , PDF_sum", PDF_error_hessian, PDF_error_mc, PDF_average , PDF_sum );
 
     /*
+    PDF WEIGHTS 2018
+    PW - default weights 306000, NNPDF31_nnlo_hessian_pdfas - HESSIAN !!!
+    MG - default weights 320900, NNPDF31_nnlo_as_0118_nf_4, 
+       - stored weighs   292000, NNPDF30_nlo_nf_4_pdfas     - NOT HESSIAN !!!
+
+    POWHEG 2018 WEIGHTS DEFINITION =============================================== SAME AS MG 2018
+    <weightgroup combine="envelope" name="scale_variation">
+<weight id="1001"> lhapdf=306000 renscfact=1d0 facscfact=1d0 </weight>
+<weight id="1002"> lhapdf=306000 renscfact=1d0 facscfact=2d0 </weight>
+<weight id="1003"> lhapdf=306000 renscfact=1d0 facscfact=0.5d0 </weight>
+<weight id="1004"> lhapdf=306000 renscfact=2d0 facscfact=1d0 </weight>
+<weight id="1005"> lhapdf=306000 renscfact=2d0 facscfact=2d0 </weight>
+<weight id="1006"> lhapdf=306000 renscfact=2d0 facscfact=0.5d0 </weight>
+<weight id="1007"> lhapdf=306000 renscfact=0.5d0 facscfact=1d0 </weight>
+<weight id="1008"> lhapdf=306000 renscfact=0.5d0 facscfact=2d0 </weight>
+<weight id="1009"> lhapdf=306000 renscfact=0.5d0 facscfact=0.5d0 </weight>
+</weightgroup>
+<weightgroup combine="hessian" name="PDF_variation1">
+<weight id="2000"> lhapdf=306000 </weight>
+
+    
     <weight id="1001"> muR=1 muF=1 hdamp=mt=272.7225 </weight>
     <weight id="1002"> muR=1 muF=2 hdamp=mt=272.7225 </weight>
     <weight id="1003"> muR=1 muF=0.5 hdamp=mt=272.7225 </weight>
@@ -383,26 +457,6 @@ namespace hzura {
     <weight MUF="1" MUR="1" PDF="320900" id="474"> Member 0 of sets NNPDF31_nnlo_as_0118_nf_4</weight>
     */
 
-    double muRmuF_nominal = weights->at( 0 );
-    muR_up         = weights->at( 3 ) / muRmuF_nominal;
-    muR_dn         = weights->at( 6 ) / muRmuF_nominal;
-    muF_up         = weights->at( 1 ) / muRmuF_nominal;
-    muF_dn         = weights->at( 2 ) / muRmuF_nominal;
-    muRmuF_up      = weights->at( 4 ) / muRmuF_nominal;
-    muRmuF_dn      = weights->at( 8 ) / muRmuF_nominal;
-
-    alpha_s_dn = -1;
-    alpha_s_up = -1;
-    if(N_alpha_weights == 2){
-      alpha_s_dn = weights->at(weights->size()-2 ) / muRmuF_nominal ;
-      alpha_s_up = weights->at(weights->size()-1 ) / muRmuF_nominal ;
-    } else {
-      msg("calc_flashgg_lhe_uncertanties(): No alpha_S from flashgg lhe weight collection :C ... ");
-    }
-
-    PDF_up = PDF_nominal + PDF_error_hessian ;
-    PDF_dn = PDF_nominal - PDF_error_hessian ;
-
     return;
     for(int i = 0; i < weights->size(); i++) cout << weights->at(i) << endl;
     msg( "N_weights, N_pdf_weights, N_alpha_weights, N_scale_weights = ", N_weights, N_pdf_weights, N_alpha_weights, N_scale_weights );
@@ -415,6 +469,22 @@ namespace hzura {
     msg( "event->flashgg_weight = ", event->flashgg_weight );
     msg( "event->weight = ", event->weight );
     msg( "event->originalXWGTUP = ", event->originalXWGTUP );
+  }
+
+  void recalc_alpha_s_uncertanties( Float_t & alpha_s_dn, Float_t & alpha_s_up ){
+    double pdfId1 = hzura::glob::event->event->PdfId1;
+    double pdfX1  = hzura::glob::event->event->PdfXs1;
+    double pdfQ   = hzura::glob::event->event->PdfQScale;
+    double pdfId2 = hzura::glob::event->event->PdfId2;
+    double pdfX2  = hzura::glob::event->event->PdfXs2;
+
+    vector<LHAPDF::PDF*> & pdfs = hzura::glob::PDFs_target;
+    int N_pds                   = hzura::glob::PDFs_target_n_replics;
+
+    double PDF_nominal = pdfs.at(0)->xfxQ(pdfId1, pdfX1, pdfQ) * pdfs.at(0)->xfxQ(pdfId2, pdfX2, pdfQ);
+    alpha_s_dn = pdfs.at(N_pds+2)->xfxQ(pdfId1, pdfX1, pdfQ) * pdfs.at(N_pds+2)->xfxQ(pdfId2, pdfX2, pdfQ) / PDF_nominal;
+    alpha_s_up = pdfs.at(N_pds+1)->xfxQ(pdfId1, pdfX1, pdfQ) * pdfs.at(N_pds+1)->xfxQ(pdfId2, pdfX2, pdfQ) / PDF_nominal;
+    // msg( alpha_s_dn, alpha_s_up );
   }
 
   void recalc_pdf_uncertanties( Float_t & PDF_central, Float_t & PDF_up, Float_t & PDF_dn, bool hessian=true ){
@@ -433,8 +503,12 @@ namespace hzura {
     int N_pds                   = hzura::glob::PDFs_target_n_replics;
 
     double w0 = pdf_gen->xfxQ(pdfId1, pdfX1, pdfQ) * pdf_gen->xfxQ(pdfId2, pdfX2, pdfQ);
+
+    // cout << w0 << endl;
+    // cout << hzura::glob::event->event->flashgg_mc_weights.at(0) << endl;;
     
     double PDF_nominal = pdfs.at(0)->xfxQ(pdfId1, pdfX1, pdfQ) * pdfs.at(0)->xfxQ(pdfId2, pdfX2, pdfQ);
+    PDF_central = PDF_nominal / w0;
     double PDF_sum     = 0;
     double PDF_average = 0;
     for(int i = 0; i < N_pds; i++){
@@ -442,22 +516,19 @@ namespace hzura {
       PDF_sum     += TMath::Power( PDF_nominal - pdf_value, 2 ) ;
       PDF_average += pdf_value ;
 
-      return;
-
-      msg( "event->PdfXs1, event->PdfXs2, event->PdfQScale, event->PdfId1, event->PdfId2 = ", hzura::glob::event->event->PdfXs1, hzura::glob::event->event->PdfXs2, hzura::glob::event->event->PdfQScale, hzura::glob::event->event->PdfId1, hzura::glob::event->event->PdfId2 );
+      // msg( "recalc_pdf_uncertanties(): event->PdfXs1, event->PdfXs2, event->PdfQScale, event->PdfId1, event->PdfId2 = ", hzura::glob::event->event->PdfXs1, hzura::glob::event->event->PdfXs2, hzura::glob::event->event->PdfQScale, hzura::glob::event->event->PdfId1, hzura::glob::event->event->PdfId2 );
+      continue;
     }
 
     double PDF_error_hessian = TMath::Sqrt( PDF_sum );
     if(hessian){
       PDF_up = (PDF_nominal + PDF_error_hessian) / w0;
       PDF_dn = (PDF_nominal - PDF_error_hessian) / w0;
-      PDF_central = PDF_nominal / w0;
 
-      return;
-
-      msg( "pdf1, pdf2 = ", pdf_gen->xfxQ(pdfId1, pdfX1, pdfQ), pdf_gen->xfxQ(pdfId2, pdfX2, pdfQ) );
+      // msg( "pdf1, pdf2 = ", pdf_gen->xfxQ(pdfId1, pdfX1, pdfQ), pdf_gen->xfxQ(pdfId2, pdfX2, pdfQ) );
       // msg( "PDF_sum, PDF_average, pdf_value = ", PDF_sum, PDF_average, pdf_value );
-      msg( "PDF_central, PDF_nominal, PDF_up, PDF_dn, PDF_old = ", PDF_central, PDF_nominal, PDF_up, PDF_dn, w0 );
+      // msg( "PDF_central, PDF_nominal, PDF_up, PDF_dn, PDF_old = ", PDF_central, PDF_nominal, PDF_up, PDF_dn, w0 );
+      return;
     }
 
     PDF_average = PDF_average / pdfs.size();
@@ -470,8 +541,8 @@ namespace hzura {
     PDF_up = (PDF_nominal + PDF_error_mc) / w0 ;
     PDF_dn = (PDF_nominal - PDF_error_mc) / w0 ;
 
+    // msg( "recalc_pdf_uncertanties(): PDF_nominal, PDF_up, PDF_dn = ", PDF_nominal, PDF_up, PDF_dn );
     return;
-    msg( "PDF_nominal, PDF_up, PDF_dn = ", PDF_nominal, PDF_up, PDF_dn );
   }
 
 

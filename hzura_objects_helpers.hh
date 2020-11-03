@@ -95,7 +95,7 @@ namespace hzura {
   };
 
   EventWeights calc_event_weight(const vector<Photon> & selected_photons, const vector<Electron> & selected_electrons, const vector<Muon> & selected_muons,
-                                 const vector<Jet> & selected_ljets,  const vector<Jet> & selected_bjets, const PileUpSFReader & pileup_sf_calculator, bool make_custom_pdf = false, bool hessian_pdf = false){
+                                 const vector<Jet> & selected_ljets,  const vector<Jet> & selected_bjets, const PileUpSFReader & pileup_sf_calculator, bool gen_hessian_pdf = false, bool make_custom_pdf = false, bool hessian_pdf = false, bool make_custom_alpha_s = false){
     EventWeights ews;
     // apply photons SFs
     // ID+ISO
@@ -121,11 +121,11 @@ namespace hzura {
 
     const std::vector<Float_t> & diphoton_weights = hzura::glob::event->GetEventFlashggDiphotonWeights();
     ews.sf_FracRV.Set        ( 1.,  1., 1. );
-    ews.sf_LooseMvaSF.Set    ( diphoton_weights[2],  diphoton_weights[1], diphoton_weights[3] );
-    ews.sf_PreselSF.Set      ( diphoton_weights[5],  diphoton_weights[4], diphoton_weights[6] );
-    ews.sf_Trigger.Set       ( diphoton_weights[8],  diphoton_weights[7], diphoton_weights[9] );
-    ews.sf_electronVetoSF.Set( diphoton_weights[11], diphoton_weights[10], diphoton_weights[12] );
-    ews.sf_PrefireSF.Set     ( diphoton_weights[14], diphoton_weights[13], diphoton_weights[15] );
+    ews.sf_LooseMvaSF.Set    ( diphoton_weights[2]/diphoton_weights[0],  diphoton_weights[1], diphoton_weights[3]/diphoton_weights[0] );
+    ews.sf_PreselSF.Set      ( diphoton_weights[5]/diphoton_weights[0],  diphoton_weights[4], diphoton_weights[6]/diphoton_weights[0] );
+    ews.sf_Trigger.Set       ( diphoton_weights[8]/diphoton_weights[0],  diphoton_weights[7], diphoton_weights[9]/diphoton_weights[0] );
+    ews.sf_electronVetoSF.Set( diphoton_weights[11]/diphoton_weights[0], diphoton_weights[10], diphoton_weights[12]/diphoton_weights[0] );
+    ews.sf_PrefireSF.Set     ( diphoton_weights[14]/diphoton_weights[0], diphoton_weights[13], diphoton_weights[15]/diphoton_weights[0] );
 
     if(diphoton_weights[0] < 0.0000001){
       cout << "!!!===============" << endl;
@@ -223,7 +223,7 @@ namespace hzura {
 
     // PDF+scale
     Float_t PDF_up, PDF_dn, muR_up, muR_dn, muF_up, muF_dn, muRmuF_up, muRmuF_dn, alpha_s_dn, alpha_s_up;
-    calc_flashgg_lhe_uncertanties(PDF_up, PDF_dn, muR_up, muR_dn, muF_up, muF_dn, muRmuF_up, muRmuF_dn, alpha_s_dn, alpha_s_up);
+    calc_flashgg_lhe_uncertanties(PDF_up, PDF_dn, muR_up, muR_dn, muF_up, muF_dn, muRmuF_up, muRmuF_dn, alpha_s_dn, alpha_s_up, gen_hessian_pdf);
     ews.sf_PDF.Set( PDF_dn,  1., PDF_up ) ;
     ews.sf_muR.Set( muR_dn,  1., muR_up ) ;
     ews.sf_muF.Set( muF_dn,  1., muF_up ) ;
@@ -231,9 +231,17 @@ namespace hzura {
     ews.sf_alpha_s.Set( alpha_s_dn,  1., alpha_s_up ) ;
 
     if( make_custom_pdf ){
+      // msg("Old PDF values :", PDF_dn,  1., PDF_up);
+    
       Float_t PDF_central;
       recalc_pdf_uncertanties(PDF_central, PDF_up, PDF_dn, hessian_pdf);
       ews.sf_PDF.Set( PDF_dn,  PDF_central, PDF_up ) ;
+      
+      // msg("Old PDF values :", PDF_dn,  PDF_central, PDF_up);
+    }
+    if( make_custom_alpha_s ) {
+      recalc_alpha_s_uncertanties( alpha_s_dn, alpha_s_up );
+      ews.sf_alpha_s.Set( alpha_s_dn,  1., alpha_s_up ) ;
     }
 
     // total and variations
@@ -457,7 +465,7 @@ namespace hzura {
   }
 
   // btags ==--
-  void calc_btag_variables(hzura::Jet & j){ // FIXME 2016 2017 2018
+  void calc_btag_variables(hzura::Jet & j){
     const int & i = j.index;
     // b-tagging
     // https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookMiniAOD2017#B_tagging
@@ -550,7 +558,8 @@ namespace hzura {
     Float_t sjet = hzura::glob::event->GetJetSf(i);
     // msg(sjet, hzura::glob::event->Jets_sf_u[i], hzura::glob::event->Jets_sf_d[i]);
     if( type == "up")   sjet = hzura::glob::event->GetJetSfU(i);
-    if( type == "down") sjet = hzura::glob::event->GetJetSfD(i);
+    else if( type == "down") sjet = hzura::glob::event->GetJetSfD(i);
+    else if( not type.size() ) return;
 
     Float_t getJet_pt = hzura::glob::event->GetJetGetJetPt(i);
     if(getJet_pt > 0)

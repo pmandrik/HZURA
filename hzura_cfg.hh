@@ -28,10 +28,17 @@ namespace hzura {
         msg_err("hzura::RunParameters(): set option", opts[0], "=", opts[1]);
       }
     }
+    
+    bool CheckBool(const string & name){
+      string value = Get( name );
+      if(not value.size() ) return false;
+      if( value == "false" or value == "False" or value == "FALSE" or value == "0") return false;
+      return true;
+    }
 
-    string Get(string pname){
+    string Get(const string & pname, string def = ""){
       map<string, string>::iterator it = values.find( pname );
-      if( it == values.end() ) return "";
+      if( it == values.end() ) return def;
       return it->second;
     }
     
@@ -50,6 +57,7 @@ namespace hzura {
 
     vector<LHAPDF::PDF*> PDFs_gen, PDFs_target;
     int PDFs_target_n_replics;
+    bool PRINT_LHE_WEIGHTS, MADGRAPH;
 
     void Init(const string & era, ReaderGRINDER * event){
 
@@ -60,6 +68,9 @@ namespace hzura {
       if( year_era == "2017" ) year = 2017;
       if( year_era == "2018" ) year = 2018;
       is_data = true;
+      
+      PRINT_LHE_WEIGHTS = false;
+      MADGRAPH = false;
     }
 
   };

@@ -6,6 +6,7 @@ namespace hzura {
 
   // PUJID ===============================================================================================
   PUJIDReader get_pujid_reader(){
+    msg("hzura::get_pujid_reader() ... ");
     PUJIDReader answer;
     // https://twiki.cern.ch/twiki/bin/view/CMS/PileupJetID#Working_points
     answer.eta_range = std::vector<double>( {2.5, 2.75, 3.0, 5.0} );
@@ -39,7 +40,7 @@ namespace hzura {
       answer.GetSF_mistag_medium = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_alt(pt, eta, unc, "lmt", "h2_mistag_sf2017_L", "lmt", "h2_mistag_sf2017_L_Systuncty");  };
       answer.GetSF_mistag_tight  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_alt(pt, eta, unc, "lmt", "h2_mistag_sf2017_L", "lmt", "h2_mistag_sf2017_L_Systuncty");  };
     }
-
+    msg("hzura::get_pujid_reader() ... ok");
     return answer;
   }
 
@@ -137,13 +138,21 @@ namespace hzura {
     return answer;
   }
 
-  // muons SFs ... TODO 2017 2018
+  // muons SFs ...
   SFCalculator get_muons_sf_reader(){
     SFCalculator answer; 
 
     if(hzura::glob::year_era == "2016"){
-      double Lumi_BCDEF = 1.0;
-      double Lumi_GH    = 1.0; // FIXME
+      double lumi_periodB = 5750.490644035;
+      double lumi_periodC = 2572.903488748;
+      double lumi_periodD = 4242.291556970;
+      double lumi_periodE = 4025.228136967;
+      double lumi_periodF = 3104.509131800;
+      double lumi_periodG = 7575.824256098;
+      double lumi_periodH = 8650.628380028;
+
+      double Lumi_BCDEF = lumi_periodB+lumi_periodC+lumi_periodD+lumi_periodE+lumi_periodF;
+      double Lumi_GH    = lumi_periodG+lumi_periodH;
 
       double w1 = Lumi_BCDEF / (Lumi_BCDEF + Lumi_GH);
       double w2 = Lumi_GH    / (Lumi_BCDEF + Lumi_GH);
@@ -177,6 +186,12 @@ namespace hzura {
       answer.GetSF_iso_loose  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_iso(eta, pt, unc, "NUM_LooseRelIso_DEN_LooseID_eta_pt"); };
    // answer.GetSF_iso_medium = [](const Float_t & eta, const Float_t & pt, const int & unc) { return GetSF_iso(eta, pt, unc, "NUM_MediumID_DEN_genTracks_eta_pt") };
       answer.GetSF_iso_tight  = [ answer ](const Float_t & eta, const Float_t & pt, const int & unc) { return answer.GetSF_iso(eta, pt, unc, "NUM_TightRelIso_DEN_TightIDandIPCut_eta_pt"); }; 
+
+      vector<SFFileReader *> readers = { sf_id_BCDEF, sf_iso_BCDEF, sf_id_GH, sf_iso_GH };
+      for( auto reader : readers ){
+        reader->msg_if_outside_range   = false;
+        reader->value_if_outside_range = 1.0;
+      }
     }
 
     if(hzura::glob::year_era == "2017"){
