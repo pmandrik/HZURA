@@ -12,7 +12,7 @@ using namespace pm;
 #include "external/BTagCalibrationStandalone.cpp"
 // https://twiki.cern.ch/twiki/bin/viewauth/CMS/MissingETRun2Corrections#xy_Shift_Correction_MET_phi_modu
 #include "external/XYMETCorrection.h"
-#include "/afs/cern.ch/work/p/pmandrik/dihiggs/8_mvanaluse/VSEVA/HHWWgg/reweight/reweight_nlo.C"
+#include "/afs/cern.ch/work/p/pmandrik/dihiggs/8_mvanaluse/VSEVA/HHWWgg/reweight/reweight_HH.C"
 // JEC
 // https://github.com/cms-sw/cmssw/tree/CMSSW_11_1_0_pre2/CondFormats/JetMETObjects/src
 // https://raw.githubusercontent.com/cms-sw/cmssw/CMSSW_11_1_0_pre2/CondFormats/JetMETObjects/interface/JetCorrectorParameters.h
@@ -296,6 +296,7 @@ int main(int argc, char *argv[]) { // FIXME
   bool TARGET_PDF_HESSIAN = hzura::glob::parameters->CheckBool( "TARGET_PDF_HESSIAN" );
   bool RECALC_ALPHA_S     = hzura::glob::parameters->CheckBool( "RECALC_ALPHA_S" );
   hzura::glob::PRINT_LHE_WEIGHTS = hzura::glob::parameters->CheckBool( "PRINT_LHE_WEIGHTS" );
+  bool USE_SYS_CONFIGS    = (RUNMODE.find("SYS") != std::string::npos) and not hzura::glob::parameters->CheckBool( "NOSYS" );
   
   string ERA = hzura::glob::parameters->Get( "ERA", "2017" );
   hzura::glob::Init( ERA, nullptr );
@@ -361,11 +362,11 @@ int main(int argc, char *argv[]) { // FIXME
   cfg.MUON_ISOID_CUT = id_names::tight;       // id_names::loose id_names::medium id_names::tight
   cfg.JET_LTAG_N_MAX = 3;
   cfg.JET_BTAG_N_MAX = 1;
-  cfg.JET_PT_CUT = 20;
+  cfg.JET_PT_CUT  = 20;
   cfg.JET_ETA_CUT = 3;
   cfg.JET_ID_CUT = id_names::tight;           // id_names::loose id_names::medium id_names::tight
-  cfg.JET_BTAGGER = "DeepFlavour";                // "DeepCSV" "DeepFlavour"
-  cfg.JET_BTAGGER_ID = id_names::medium;       // id_names::loose id_names::medium id_names::tight #FIXME
+  cfg.JET_BTAGGER = "DeepFlavour";            // "DeepCSV" "DeepFlavour"
+  cfg.JET_BTAGGER_ID = id_names::medium;      // id_names::loose id_names::medium id_names::tight #FIXME
   cfg.JET_JER = "central";                    // "central" "up" "down"
   cfg.JET_JEC_TYPE = "";                      // "Total", "SubTotalMC", "SubTotalAbsolute", "SubTotalScale", "SubTotalPt", "SubTotalRelative", "SubTotalPileUp", "FlavorQCD", "TimePtEta"
   cfg.JET_JEC_DIR  = true;
@@ -375,7 +376,7 @@ int main(int argc, char *argv[]) { // FIXME
 
   std::vector<hzura::EventCfg> analyses_configs = { cfg };
   if( DATASET_TYPE != "D" and DATASET_TYPE != "BL" ){
-    if(RUNMODE.find("SYS") != std::string::npos){
+    if(USE_SYS_CONFIGS){
       hzura::add_systematic_cfgs_def    ( cfg, analyses_configs );
       hzura::add_systematic_cfgs_flashgg( cfg, analyses_configs );
     }
@@ -395,19 +396,26 @@ int main(int argc, char *argv[]) { // FIXME
   // reweighting ================================================================================================
   double xsec_eft_old = 0;
   string EFT_NODE = hzura::glob::parameters->Get( "EFT_NODE" );
-  if( EFT_NODE.size() ) xsec_eft_old = get_eft_xsec(EFT_NODE, "lo", hzura::glob::year, true);
+  if( EFT_NODE.size() ) xsec_eft_old = get_eft_xsec(EFT_NODE, "lo", hzura::glob::year_era, true);
   int EFT_NODE_index = -1;
   
   vector<string> out_benchmars = {"sm", "box", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"};
-  ReweightGudrin r_gudrin = ReweightGudrin("/afs/cern.ch/work/p/pmandrik/dihiggs/8_mvanaluse/VSEVA/HHWWgg/reweight/LO-Ais-13TeV.csv", "/afs/cern.ch/work/p/pmandrik/dihiggs/8_mvanaluse/VSEVA/HHWWgg/reweight/NLO-Ais-13TeV.csv");
-  vector< vector<double> > benchmark_couplings, benchmark_couplings_cms;
+  vector<string> extra_benchmars = get_benchmarks_names();
+  out_benchmars = extra_benchmars;
+
+  ReweightGudrin   r_gudrin = ReweightGudrin("/afs/cern.ch/work/p/pmandrik/dihiggs/8_mvanaluse/VSEVA/HHWWgg/reweight/LO-Ais-13TeV.csv", "/afs/cern.ch/work/p/pmandrik/dihiggs/8_mvanaluse/VSEVA/HHWWgg/reweight/NLO-Ais-13TeV.csv");
+  ReweightCarvalho r_carval = ReweightCarvalho("/afs/cern.ch/work/p/pmandrik/dihiggs/8_mvanaluse/VSEVA/HHWWgg/reweight/coefficientsByBin_extended_3M_costHHSim_59-4.txt");
+
+  vector< vector<double> > benchmark_couplings, benchmark_couplings_cms, benchmark_couplings0, benchmark_couplings0_cms;
   vector<double> xsec_eft_new_lo, xsec_eft_new_nlo;
   for(int i = 0; i < out_benchmars.size(); i++){
     if(EFT_NODE == out_benchmars.at(i)) EFT_NODE_index = i;
-    benchmark_couplings_cms.push_back( r_gudrin.GetEFTBenchmark( out_benchmars.at(i), hzura::glob::year_era, true  ) );
-    benchmark_couplings.push_back    ( r_gudrin.GetEFTBenchmark( out_benchmars.at(i), hzura::glob::year_era, false ) );
-    xsec_eft_new_lo.push_back ( get_eft_xsec(out_benchmars.at(i), "lo",  hzura::glob::year, false) );
-    xsec_eft_new_nlo.push_back( get_eft_xsec(out_benchmars.at(i), "nlo", hzura::glob::year, false) );
+    benchmark_couplings_cms.push_back ( r_gudrin.GetEFTBenchmark( out_benchmars.at(i), hzura::glob::year_era, true  ) );
+    benchmark_couplings.push_back     ( r_gudrin.GetEFTBenchmark( out_benchmars.at(i), hzura::glob::year_era, false ) );
+    benchmark_couplings0_cms.push_back( r_carval.GetEFTBenchmark( out_benchmars.at(i), hzura::glob::year_era, true ) );
+    benchmark_couplings0.push_back    ( r_carval.GetEFTBenchmark( out_benchmars.at(i), hzura::glob::year_era, false  ) );
+    xsec_eft_new_lo.push_back ( get_eft_xsec(out_benchmars.at(i), "lo",  hzura::glob::year_era, false) );
+    xsec_eft_new_nlo.push_back( get_eft_xsec(out_benchmars.at(i), "nlo", hzura::glob::year_era, false) );
   }
 
   // 0. read events ================================================================================================
@@ -432,7 +440,7 @@ int main(int argc, char *argv[]) { // FIXME
   pm::parce_path(input_file, path, process_name, ext);
   msg(input_file, path, process_name, ext );
   if(not hzura::glob::is_data){
-    if(RUNMODE.find("BTAG") != std::string::npos) calc_btagging_efficiency( "data/btag/btag_effs_" + process_name + ".root", cfg, preselector.pileup_sf_calculator, 1, cfg.JET_PT_CUT, 2000, 5, -3, 3 ); 
+    if(RUNMODE.find("BTAG") != std::string::npos) calc_btagging_efficiency( "data/btag/btag_effs_" + hzura::glob::year_era + "_" + process_name + ".root", cfg, preselector.pileup_sf_calculator, 1, cfg.JET_PT_CUT, 2000, 5, -3, 3 ); 
     preselector.btag_eff_reader = BTagEffReader( "data/btag/btag_effs_" + process_name + ".root" );
   }
   // return 0;
@@ -518,6 +526,9 @@ int main(int argc, char *argv[]) { // FIXME
       if( ljets.size() < 2 ) continue;
       selections->Fill("At least two light jets", 1);
 
+      //if( ljets.size() == 1 ) continue;
+      //selections->Fill("Exactly one light jets", 1);
+
       // H->yy candidate
       y1_tlv = photons[0].tlv ;
       y2_tlv = photons[1].tlv ;
@@ -565,6 +576,10 @@ int main(int argc, char *argv[]) { // FIXME
         gen_Hi_yy_tlv = gen_H1i_tlv;
         gen_Hi_WW_tlv = gen_H2i_tlv;
         gen_lep_leading_tlv = leading_lepton.tlv;
+
+        // cout << "---1" << endl;
+        // msg( gen_Hi_yy_tlv.Px(), gen_Hi_yy_tlv.Py(), gen_Hi_yy_tlv.Pz() ); 
+        // msg( gen_Hi_WW_tlv.Px(), gen_Hi_WW_tlv.Py(), gen_Hi_WW_tlv.Pz() );
       }
 
       // EVENT HLV RECONSTRUCTION ==============================================
@@ -601,10 +616,6 @@ int main(int argc, char *argv[]) { // FIXME
       y1_Et_div_m_yy = y1_tlv.Et() / m_yy;
       y2_Et_div_m_yy = y2_tlv.Et() / m_yy;
       CosTheta_y1_Hyy = TMath::Cos( y1_tlv.Angle( H_yy_tlv.Vect() ) );
-
-      for( int ii = 0; ii < ljets.size(); ii++){
-        // cout << ii << " " << ljets.at(ii).tlv.Pt() << endl;
-      }
 
       // W->jj candidate
       bool HH_reconstructed = false;
@@ -658,15 +669,12 @@ int main(int argc, char *argv[]) { // FIXME
       // const vector<Photon> & selected_photons, const vector<Electron> & selected_electrons, const vector<Muon> & selected_muons,
       // const vector<Jet>    & selected_ljets,   const vector<Jet> & selected_bjets,          const PileUpSFReader & pileup_sf_calculator
       std::vector<hzura::Photon>    used_photons   = { photons[0], photons[1] };
-      std::vector<hzura::Electron>  used_electrons = {  };
-      std::vector<hzura::Muon>      used_muons     = {  };
+      std::vector<hzura::Electron>  used_electrons = {};
+      std::vector<hzura::Muon>      used_muons     = {};
       if( muon_channel )  used_muons.push_back( muons[ leadin_mu_index ] );
       else                used_electrons.push_back( electrons[ leadin_el_index ] );
-      std::vector<hzura::Jet>       used_ljets ;
-      if( ljets.size() )    used_ljets.emplace_back( ljets[0] );
-      if( ljets.size() > 1) used_ljets.emplace_back( ljets[1] );
-      std::vector<hzura::Jet>       used_bjets ;
-
+      std::vector<hzura::Jet> & used_ljets = ljets;
+      std::vector<hzura::Jet>   used_bjets = {};
 
       // msg( "get weights ... " );
       if( DATASET_TYPE != "D" ){
@@ -683,6 +691,7 @@ int main(int argc, char *argv[]) { // FIXME
         mc_lumi_weight = hzura::glob::event->GetEventFlashggWeight() ;
 
         mc_weight      = TMath::Sign(1, mc_raw_weight) * mc_lumi_weight;
+        // cout << mc_weight << " " << mc_raw_weight << endl;
 
         EventWeights weights               = hzura::calc_event_weight(used_photons, used_electrons, used_muons, used_ljets, used_bjets, preselector.pileup_sf_calculator, GEN_PDF_HESSIAN, TARGET_PDF.size(), TARGET_PDF_HESSIAN, RECALC_ALPHA_S);
         event_weight                       = weights.combined_weight;
@@ -698,19 +707,28 @@ int main(int argc, char *argv[]) { // FIXME
       }
 
       if( DATASET_TYPE == "S" and EFT_NODE_index >= 0){
+
         for(int i = 0; i < benchmark_couplings.size(); i++){
-          (*(weights_lo_cms[i]))  = r_gudrin.GetDiffXsection( gen_HHi_tlv.M(), benchmark_couplings_cms.at(i), "lo" );
+          (*(weights_lo_cms[i]))   = r_gudrin.GetDiffXsection( gen_HHi_tlv.M(), benchmark_couplings_cms.at(i), "lo" );
+          (*(weights_lo0_cms[i]))  = r_carval.GetDiffXsection( gen_HHi_tlv.M(), gen_Hi_yy_tlv.CosTheta(), benchmark_couplings0_cms.at(i) );
         }
+
         for(int i = 0; i < benchmark_couplings.size(); i++){
           (*(weights_lo[i]))  = r_gudrin.GetDiffXsection( gen_HHi_tlv.M(), benchmark_couplings.at(i), "lo" );
           (*(weights_nlo[i])) = r_gudrin.GetDiffXsection( gen_HHi_tlv.M(), benchmark_couplings.at(i), "nlo" );
+          TLorentzVector gen_H = gen_Hi_yy_tlv ;
+          gen_H.Boost( - (gen_Hi_yy_tlv + gen_Hi_WW_tlv).BoostVector() );
+          (*(weights_lo0[i])) = r_carval.GetDiffXsection( gen_HHi_tlv.M(), gen_H.CosTheta(), benchmark_couplings0.at(i) );
           
           if((*(weights_lo_cms[EFT_NODE_index])) > 0.000001){
             (*(reweight_factor_lo[i]))  = (*(weights_lo[i])) / (*(weights_lo_cms[EFT_NODE_index]))  * xsec_eft_old / xsec_eft_new_lo[i]  ;
             (*(reweight_factor_nlo[i])) = (*(weights_nlo[i])) / (*(weights_lo_cms[EFT_NODE_index])) * xsec_eft_old / xsec_eft_new_nlo[i] ;
+            (*(reweight_factor_lo0[i])) = (*(weights_lo0[i])) / (*(weights_lo_cms[EFT_NODE_index])) * xsec_eft_old / xsec_eft_new_lo[i] ;
           } else {
             (*(reweight_factor_lo[i]))  = 0;
             (*(reweight_factor_nlo[i])) = 0;
+            (*(reweight_factor_lo0[i])) = 0;
+            selections->Fill("Zero reweighting", 1);
           } 
         }
       }

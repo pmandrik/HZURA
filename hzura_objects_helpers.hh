@@ -34,17 +34,23 @@ namespace hzura {
 
       sf_alpha_s.Set( 1.f );
 
-      combined_weights_names      = {"sf_photons", "sf_electrons", "sf_muons_id", "sf_muons_iso", "sf_ljets_btag", "sf_bjets_btag", "sf_pileup", "sf_PUJID_tag", "sf_PUJID_mistag", "FracRV", "LooseMvaSF", "PreselSF", "Trigger",  "electronVetoSF", "PrefireSF", "PDF", "muR", "muF", "muRmuF", "alpha_s" };
+      sf_ISR.Set( 1.f );
+      sf_FSR.Set( 1.f );
+
+      combined_weights_names      = { "sf_photons", "sf_electrons", "sf_muons_id", "sf_muons_iso", "sf_ljets_btag", "sf_bjets_btag", "sf_pileup", "sf_PUJID_tag", "sf_PUJID_mistag", "FracRV", "LooseMvaSF", "PreselSF", "Trigger",  "electronVetoSF", "PrefireSF", "PDF", "muR", "muF", "muRmuF", "alpha_s", "sf_ISR", "sf_FSR" };
       combined_weight = 1.f;
       for(int i = 0, wn = combined_weights_names.size(); i < wn; i++){
         combined_weights_up.push_back( 1.f );
         combined_weights_down.push_back( 1.f );
       }
+
+      
     }
 
     std::vector<Weight*> GetWeights() {
       std::vector<Weight*>     weights  = { &sf_photons, &sf_electrons, &sf_muons_id, &sf_muons_iso, &sf_ljets_btag, &sf_bjets_btag, &sf_pileup, &sf_PUJID_tag, &sf_PUJID_mistag, 
-                                            &sf_FracRV, &sf_LooseMvaSF, &sf_PreselSF, &sf_Trigger, &sf_electronVetoSF, &sf_PrefireSF, &sf_PDF, &sf_muR, &sf_muF, &sf_muRmuF, &sf_alpha_s };
+                                            &sf_FracRV,  &sf_LooseMvaSF, &sf_PreselSF, &sf_Trigger, &sf_electronVetoSF, &sf_PrefireSF, &sf_PDF, &sf_muR, &sf_muF, &sf_muRmuF, &sf_alpha_s,
+                                            &sf_ISR,     &sf_FSR };
       return weights;
     }
 
@@ -90,6 +96,7 @@ namespace hzura {
     Weight sf_pileup;
     Weight sf_PUJID_tag, sf_PUJID_mistag;
     Weight sf_PDF, sf_muR, sf_muF, sf_muRmuF, sf_alpha_s;
+    Weight sf_ISR, sf_FSR;
 
     Weight sf_FracRV, sf_LooseMvaSF, sf_PreselSF, sf_Trigger, sf_electronVetoSF, sf_PrefireSF;
   };
@@ -125,17 +132,18 @@ namespace hzura {
     ews.sf_PreselSF.Set      ( diphoton_weights[5]/diphoton_weights[0],  diphoton_weights[4], diphoton_weights[6]/diphoton_weights[0] );
     ews.sf_Trigger.Set       ( diphoton_weights[8]/diphoton_weights[0],  diphoton_weights[7], diphoton_weights[9]/diphoton_weights[0] );
     ews.sf_electronVetoSF.Set( diphoton_weights[11]/diphoton_weights[0], diphoton_weights[10], diphoton_weights[12]/diphoton_weights[0] );
-    ews.sf_PrefireSF.Set     ( diphoton_weights[14]/diphoton_weights[0], diphoton_weights[13], diphoton_weights[15]/diphoton_weights[0] );
+    ews.sf_PrefireSF.Set     ( diphoton_weights[14], diphoton_weights[13], diphoton_weights[15] );
+    if(hzura::glob::year == 2018) ews.sf_PrefireSF.Set     ( 1, 1, 1 );
 
     if(diphoton_weights[0] < 0.0000001){
       cout << "!!!===============" << endl;
       cout << diphoton_weights.size() << " " <<  diphoton_weights[0] << endl;
-      cout << diphoton_weights[2] << " " << diphoton_weights[1] << " " << diphoton_weights[3] << endl;
-      cout << diphoton_weights[5] << " " << diphoton_weights[4] << " " << diphoton_weights[6] << endl;
-      cout << diphoton_weights[8] << " " << diphoton_weights[7] << " " << diphoton_weights[9] << endl;
-      cout << diphoton_weights[11] << " " << diphoton_weights[10] << " " << diphoton_weights[12] << endl;
-      cout << diphoton_weights[14] << " " << diphoton_weights[13] << " " << diphoton_weights[15] << endl;
-      cout << diphoton_weights[17] << " " << diphoton_weights[16] << " " << diphoton_weights[18] << endl;
+      cout << "LooseMvaSF " <<  diphoton_weights[2] << " " << diphoton_weights[1] << " " << diphoton_weights[3] << endl;
+      cout << "PreselSF " <<  diphoton_weights[5] << " " << diphoton_weights[4] << " " << diphoton_weights[6] << endl;
+      cout << "Trigger " <<  diphoton_weights[8] << " " << diphoton_weights[7] << " " << diphoton_weights[9] << endl;
+      cout << "electronVetoSF " <<  diphoton_weights[11] << " " << diphoton_weights[10] << " " << diphoton_weights[12] << endl;
+      cout << "PrefireSF " <<  diphoton_weights[14] << " " << diphoton_weights[13] << " " << diphoton_weights[15] << endl;
+      // cout << "LooseMvaSF " <<  diphoton_weights[17] << " " << diphoton_weights[16] << " " << diphoton_weights[18] << endl;
       cout << "!!!===============" << endl;
     }
 
@@ -244,6 +252,16 @@ namespace hzura {
       ews.sf_alpha_s.Set( alpha_s_dn,  1., alpha_s_up ) ;
     }
 
+    // PS ISR/FSR
+    // 6 = isrDefHi isr:muRfac=0.5, 7 = fsrDefHi fsr:muRfac=0.5,  8 = isrDefLo isr:muRfac=2.0,   9 = fsrDefLo fsr:muRfac=2.0, 
+    // PS SHOWER WEIGHT TEST
+    std::vector<Float_t> & ps_weights = hzura::glob::event->event->ps_weights;
+    if(ps_weights.size() < 13){
+      msg("too small ps_weights.size() = ", ps_weights.size() );
+    } 
+    ews.sf_ISR.Set( ps_weights.at(6) / ps_weights.at(0), 1., ps_weights.at(8) / ps_weights.at(0) );
+    ews.sf_FSR.Set( ps_weights.at(7) / ps_weights.at(0), 1., ps_weights.at(9) / ps_weights.at(0) );
+
     // total and variations
     ews.CombineWeights();
 
@@ -254,9 +272,13 @@ namespace hzura {
 
   // PHOTONS ================================================================================================
   bool check_pass_flashgg_mva( hzura::Photon photon){
-      // MVA Check variables 
+      // MVA Check variables - OLD ABE VALUES
       double  lp_mva_thresh =  0.07;
       double slp_mva_thresh = -0.03;
+
+      // Common flashgg cut
+      lp_mva_thresh  = -0.90;
+      slp_mva_thresh = -0.90;
 
       double mva = photon.mva_value; 
       double eta = abs( photon.tlv.Eta() );
